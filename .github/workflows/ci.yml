@@ -26,3 +26,8 @@ jobs:
 
       - name: Build
         run: npm run build
+        env:
+          # SvelteKit's post-build analysis imports the server bundle, which
+          # opens the database at import time. No queries run — an in-memory
+          # DB satisfies it without touching disk.
+          DATABASE_URL: ':memory:'
