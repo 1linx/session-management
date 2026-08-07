@@ -51,6 +51,28 @@ deploying anywhere real.**
 | `/export` | all users | Download the rota as `rota.xlsx` |
 | `/raw` | all users | Unprocessed view of the stored data |
 
+## Tests
+
+```sh
+npm test           # run once
+npm run test:watch # watch mode
+```
+
+Vitest, running in plain Node against an **in-memory SQLite** — no dev server
+or fixtures on disk. [src/tests/setup.ts](src/tests/setup.ts) points the app's
+db singleton at `:memory:` and creates the schema; suites call `resetDb()`
+between tests. Form actions and load functions are imported directly from the
+route modules and invoked with stub request events
+([src/tests/helpers.ts](src/tests/helpers.ts) has the builders), so new logic
+— e.g. the Duty roster — can be tested the same way: add a `*.test.ts` under
+`src/tests/`.
+
+Current coverage: domain constants, user-form validation, password hashing,
+session lifecycle (expiry, sliding renewal, revocation), the login action,
+rota load/save rules (slot availability, status validation, role checks), user
+create/edit (slot cleanup, lockout guards, duplicate emails) and the xlsx
+export layout.
+
 ## Planned next (from the brief)
 
 - **Duty roster**: `Duty` flag on working sessions plus automatic warnings

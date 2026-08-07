@@ -1,0 +1,78 @@
+import { beforeEach, describe, expect, it } from 'vitest';
+import ExcelJS from 'exceljs';
+import { GET } from '../routes/export/+server';
+import { createEntry, createUser, resetDb } from './helpers';
+
+type ExportEvent = Parameters<typeof GET>[0];
+
+async function exportSheet(): Promise<ExcelJS.Worksheet> {
+	const response = await GET({} as ExportEvent);
+	expect(response.headers.get('Content-Type')).toContain('spreadsheetml');
+	expect(response.headers.get('Content-Disposition')).toContain('rota.xlsx');
+	const workbook = new ExcelJS.Workbook();
+	await workbook.xlsx.load(await response.arrayBuffer());
+	return workbook.worksheets[0];
+}
+
+const cell = (sheet: ExcelJS.Worksheet, r: number, c: number) =>
+	sheet.getRow(r).getCell(c).value;
+
+describe('xlsx export', () => {
+	beforeEach(resetDb);
+
+	it('lays out initials across the top and sessions down the side', async () => {
+		await createUser({ initials: 'DR1', displayOrder: 10 });
+		await createUser({ initials: 'ANP1', displayOrder: 20, category: 'anp' });
+
+		const sheet = await exportSheet();
+		expect(cell(sheet, 1, 2)).toBe('DR1');
+		expect(cell(sheet, 1, 3)).toBe('ANP1');
+		expect(cell(sheet, 2, 1)).toBe('Monday AM');
+		expect(cell(sheet, 3, 1)).toBe('Monday PM');
+		expect(cell(sheet, 11, 1)).toBe('Friday PM');
+	});
+
+	it('orders columns by display order', async () => {
+		await createUser({ initials: 'SECOND', displayOrder: 20 });
+		await createUser({ initials: 'FIRST', displayOrder: 10 });
+
+		const sheet = await exportSheet();
+		expect(cell(sheet, 1, 2)).toBe('FIRST');
+		expect(cell(sheet, 1, 3)).toBe('SECOND');
+	});
+
+	it('writes status labels, defaulting unscheduled slots to Not working', async () => {
+		const user = await createUser({ initials: 'DR1', workingSlots: '["1:AM","1:PM","2:AM"]' });
+		await createEntry(user.id, 1, 'AM', 'working');
+		await createEntry(user.id, 1, 'PM', 'working_ratho');
+		// 2:AM available but no entry saved.
+
+		const sheet = await exportSheet();
+		expect(cell(sheet, 2, 2)).toBe('Working'); // Monday AM
+		expect(cell(sheet, 3, 2)).toBe('Working (Ratho)'); // Monday PM
+		expect(cell(sheet, 4, 2)).toBe('Not working'); // Tuesday AM, unscheduled
+	});
+
+	it('forces Not working on slots outside the user’s working sessions, even with a stray entry', async () => {
+		const user = await createUser({ initials: 'DR1', workingSlots: '["1:AM"]' });
+		await createEntry(user.id, 5, 'PM', 'working'); // stray row on an unavailable slot
+
+		const sheet = await exportSheet();
+		expect(cell(sheet, 11, 2)).toBe('Not working'); // Friday PM
+	});
+
+	it('excludes inactive and off-rota users', async () => {
+		await createUser({ initials: 'SHOWN', displayOrder: 10 });
+		await createUser({ initials: 'GONE', displayOrder: 20, active: false });
+		await createUser({ initials: 'HIDDEN', displayOrder: 30, onRota: false });
+
+		const sheet = await exportSheet();
+		expect(cell(sheet, 1, 2)).toBe('SHOWN');
+		expect(cell(sheet, 1, 3)).toBeNull();
+	});
+
+	it('produces a sheet even with no users', async () => {
+		const sheet = await exportSheet();
+		expect(cell(sheet, 2, 1)).toBe('Monday AM');
+	});
+});

@@ -1,0 +1,11 @@
+#!/bin/sh
+# Run the test suite before anything leaves this machine.
+# Installed via `git config core.hooksPath .githooks` (done automatically by
+# the package.json prepare script). Bypass in an emergency: git push --no-verify
+
+echo "pre-push: running tests…"
+npm test --silent || {
+	echo ""
+	echo "pre-push: tests failed — push aborted. (Bypass: git push --no-verify)"
+	exit 1
+}
