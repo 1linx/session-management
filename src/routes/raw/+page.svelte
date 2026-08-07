@@ -57,6 +57,8 @@
 					<th scope="col">weekday</th>
 					<th scope="col">period</th>
 					<th scope="col">status</th>
+					<th scope="col">location</th>
+					<th scope="col">duty</th>
 					<th scope="col">updated_at</th>
 				</tr>
 			</thead>
@@ -68,6 +70,8 @@
 						<td>{entry.weekday}</td>
 						<td>{entry.period}</td>
 						<td class="font-mono">{entry.status}</td>
+						<td class="font-mono">{entry.location ?? 'null'}</td>
+						<td>{entry.duty}</td>
 						<td>{entry.updatedAt.toISOString()}</td>
 					</tr>
 				{/each}

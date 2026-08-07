@@ -5,6 +5,8 @@
  * beforeEach (see helpers.ts resetDb).
  */
 process.env.DATABASE_URL = ':memory:';
+// Keep realtime broadcasts a no-op in tests — no channel, no sockets.
+delete process.env.PUBLIC_REALTIME_CHANNEL;
 
 const { db } = await import('$lib/server/db');
 const schema = await import('$lib/server/db/schema');

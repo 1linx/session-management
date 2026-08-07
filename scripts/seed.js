@@ -29,13 +29,17 @@ const insertUser = db.prepare(`
 	VALUES (@id, @email, @passwordHash, @name, @initials, @role, @category, @workingSlots, @displayOrder, @onRota, 1, @createdAt)
 `);
 const insertEntry = db.prepare(`
-	INSERT INTO schedule_entries (id, user_id, weekday, period, status, updated_at)
-	VALUES (?, ?, ?, ?, ?, ?)
+	INSERT INTO schedule_entries (id, user_id, weekday, period, status, location, duty, updated_at)
+	VALUES (?, ?, ?, ?, ?, ?, ?, ?)
 `);
 
 // Sample rota lifted from example.xlsx.
-// Weekdays: 1 = Monday … 5 = Friday. W = working, N = not working, R = working (Ratho).
-const STATUS = { W: 'working', N: 'not_working', R: 'working_ratho' };
+// Weekdays: 1 = Monday … 5 = Friday. W = working (East Calder), N = not working, R = working (Ratho).
+const STATUS = {
+	W: { status: 'working', location: 'east_calder', duty: 0 },
+	N: { status: 'not_working', location: null, duty: 0 },
+	R: { status: 'working', location: 'ratho', duty: 0 }
+};
 const people = [
 	{ initials: 'DR1', category: 'doctor', rota: 'WW WW WW NN NN' },
 	{ initials: 'DR2', category: 'doctor', rota: 'NN WW NN WW WW' },
@@ -88,8 +92,8 @@ const seedAll = db.transaction(() => {
 		});
 		for (let d = 1; d <= 5; d++) {
 			['AM', 'PM'].forEach((period, pi) => {
-				const code = sessions[(d - 1) * 2 + pi];
-				insertEntry.run(randomUUID(), userId, d, period, STATUS[code], now);
+				const cell = STATUS[sessions[(d - 1) * 2 + pi]];
+				insertEntry.run(randomUUID(), userId, d, period, cell.status, cell.location, cell.duty, now);
 			});
 		}
 	});

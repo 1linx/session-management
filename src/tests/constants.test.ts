@@ -1,33 +1,79 @@
 import { describe, expect, it } from 'vitest';
 import {
 	ALL_SLOTS,
+	CELL_OPTIONS,
+	NOT_WORKING,
 	PERIODS,
-	SESSION_STATUSES,
-	STATUS_LABELS,
 	WEEKDAYS,
-	isSessionStatus,
+	cellLabel,
+	decodeCell,
+	encodeCell,
 	slotKey
 } from '$lib/constants';
 
-describe('isSessionStatus', () => {
-	it('accepts every defined status', () => {
-		for (const status of SESSION_STATUSES) {
-			expect(isSessionStatus(status.value)).toBe(true);
+describe('cell encode/decode', () => {
+	it('round-trips every pickable option', () => {
+		for (const option of CELL_OPTIONS) {
+			expect(encodeCell(option.value)).toBe(option.key);
+			expect(decodeCell(option.key)).toEqual(option.value);
 		}
 	});
 
-	it('rejects unknown values', () => {
-		expect(isSessionStatus('duty')).toBe(false);
-		expect(isSessionStatus('')).toBe(false);
-		expect(isSessionStatus('WORKING')).toBe(false);
+	it('decodes the known keys', () => {
+		expect(decodeCell('not_working')).toEqual(NOT_WORKING);
+		expect(decodeCell('working:east_calder')).toEqual({
+			status: 'working',
+			location: 'east_calder',
+			duty: false
+		});
+		expect(decodeCell('working:ratho:duty')).toEqual({
+			status: 'working',
+			location: 'ratho',
+			duty: true
+		});
+	});
+
+	it('rejects invalid keys', () => {
+		expect(decodeCell('')).toBeNull();
+		expect(decodeCell('working')).toBeNull(); // working requires a location
+		expect(decodeCell('working:mars')).toBeNull(); // unknown location
+		expect(decodeCell('working:ratho:overtime')).toBeNull(); // unknown flag
+		expect(decodeCell('working:ratho:duty:duty')).toBeNull();
+		expect(decodeCell('not_working:duty')).toBeNull(); // duty needs working
+		expect(decodeCell('on_holiday')).toBeNull();
 	});
 });
 
-describe('STATUS_LABELS', () => {
-	it('maps every status value to its label', () => {
-		expect(STATUS_LABELS['working']).toBe('Working');
-		expect(STATUS_LABELS['not_working']).toBe('Not working');
-		expect(STATUS_LABELS['working_ratho']).toBe('Working (Ratho)');
+describe('cellLabel', () => {
+	it('keeps the default location implicit, matching the spreadsheet wording', () => {
+		expect(cellLabel({ status: 'working', location: 'east_calder', duty: false })).toBe('Working');
+		expect(cellLabel({ status: 'working', location: 'east_calder', duty: true })).toBe(
+			'Working (Duty)'
+		);
+		expect(cellLabel({ status: 'working', location: 'ratho', duty: false })).toBe(
+			'Working (Ratho)'
+		);
+		expect(cellLabel({ status: 'working', location: 'ratho', duty: true })).toBe(
+			'Working (Ratho, Duty)'
+		);
+		expect(cellLabel(NOT_WORKING)).toBe('Not working');
+	});
+});
+
+describe('CELL_OPTIONS', () => {
+	it('has unique keys and includes not_working', () => {
+		expect(new Set(CELL_OPTIONS.map((o) => o.key)).size).toBe(CELL_OPTIONS.length);
+		expect(CELL_OPTIONS.map((o) => o.key)).toContain('not_working');
+	});
+
+	it('offers a plain and a duty option per location', () => {
+		expect(CELL_OPTIONS.map((o) => o.key)).toEqual([
+			'working:east_calder',
+			'working:east_calder:duty',
+			'working:ratho',
+			'working:ratho:duty',
+			'not_working'
+		]);
 	});
 });
 

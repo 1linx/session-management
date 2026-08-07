@@ -36,9 +36,17 @@ deploying anywhere real.**
 - **Working sessions**: set per user by an admin as a Mon–Fri × AM/PM grid,
   so someone can work mornings only, afternoons only, or any mix. The rota
   can only schedule those sessions; everything else always reads "Not working".
-- **Sessions**: each weekday splits into AM (8am–1pm) and PM (1pm–6pm), each
-  `Working`, `Not working`, or `Working (Ratho)`. New statuses: add to
-  `SESSION_STATUSES` in the same file.
+- **Sessions**: each weekday splits into AM (8am–1pm) and PM (1pm–6pm). A
+  session is a status plus sub-choices — currently working/not working, a
+  location (East Calder by default, or Ratho) and a Duty flag. Admins set
+  them via a popout picker on each rota cell. New statuses, locations or
+  flags: extend `CellValue`/`CELL_OPTIONS` in the same file.
+- **Live updates**: when an admin saves the rota or edits users, every
+  signed-in viewer's page refreshes automatically via a pub/sub channel on
+  [ittysockets.com](https://ittysockets.com). The channel (set via
+  `PUBLIC_REALTIME_CHANNEL` in `.env`, disabled when unset) is public, so it
+  only ever carries content-free "changed" pings — data is re-fetched through
+  each viewer's authenticated session.
 - **Rota order / shown on rota**: admins control column order; admin-only
   accounts can be hidden from the rota entirely.
 

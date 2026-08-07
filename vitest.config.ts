@@ -9,7 +9,8 @@ export default defineConfig({
 	resolve: {
 		alias: {
 			$lib: path.resolve(import.meta.dirname, 'src/lib'),
-			'$env/dynamic/private': path.resolve(import.meta.dirname, 'src/tests/env-stub.ts')
+			'$env/dynamic/private': path.resolve(import.meta.dirname, 'src/tests/env-stub.ts'),
+			'$env/dynamic/public': path.resolve(import.meta.dirname, 'src/tests/env-stub.ts')
 		}
 	},
 	test: {

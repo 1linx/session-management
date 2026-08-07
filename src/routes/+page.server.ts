@@ -2,7 +2,8 @@ import { fail } from '@sveltejs/kit';
 import { and, asc, eq, inArray } from 'drizzle-orm';
 import { db } from '$lib/server/db';
 import { scheduleEntries, users } from '$lib/server/db/schema';
-import { isSessionStatus } from '$lib/constants';
+import { decodeCell, encodeCell, type LocationValue } from '$lib/constants';
+import { broadcastChange } from '$lib/server/realtime';
 import type { Actions, PageServerLoad } from './$types';
 
 async function loadRotaUsers() {
@@ -34,10 +35,14 @@ export const load: PageServerLoad = async () => {
 				)
 		: [];
 
-	// grid[userId]["<weekday>:<period>"] = status
+	// grid[userId]["<weekday>:<period>"] = encoded cell key (e.g. "working:ratho:duty")
 	const grid: Record<string, Record<string, string>> = {};
 	for (const entry of entries) {
-		(grid[entry.userId] ??= {})[`${entry.weekday}:${entry.period}`] = entry.status;
+		(grid[entry.userId] ??= {})[`${entry.weekday}:${entry.period}`] = encodeCell({
+			status: entry.status === 'working' ? 'working' : 'not_working',
+			location: (entry.location as LocationValue | null) ?? null,
+			duty: entry.duty
+		});
 	}
 
 	return {
@@ -61,17 +66,21 @@ export const actions: Actions = {
 				const [weekdayRaw, period] = slot.split(':');
 				const weekday = Number(weekdayRaw);
 				const value = data.get(`cell:${user.id}:${weekday}:${period}`);
-				if (typeof value !== 'string' || !isSessionStatus(value)) continue;
+				if (typeof value !== 'string') continue;
+				const cell = decodeCell(value);
+				if (!cell) continue;
+				const fields = { status: cell.status, location: cell.location, duty: cell.duty };
 				await db
 					.insert(scheduleEntries)
-					.values({ userId: user.id, weekday, period, status: value })
+					.values({ userId: user.id, weekday, period, ...fields })
 					.onConflictDoUpdate({
 						target: [scheduleEntries.userId, scheduleEntries.weekday, scheduleEntries.period],
-						set: { status: value, updatedAt: new Date() }
+						set: { ...fields, updatedAt: new Date() }
 					});
 			}
 		}
 
+		broadcastChange('rota');
 		return { saved: true };
 	}
 };

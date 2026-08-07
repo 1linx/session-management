@@ -2,7 +2,7 @@ import ExcelJS from 'exceljs';
 import { and, asc, eq, inArray } from 'drizzle-orm';
 import { db } from '$lib/server/db';
 import { scheduleEntries, users } from '$lib/server/db/schema';
-import { PERIODS, STATUS_LABELS, WEEKDAYS, slotKey } from '$lib/constants';
+import { PERIODS, WEEKDAYS, cellLabel, slotKey, type LocationValue } from '$lib/constants';
 import type { RequestHandler } from './$types';
 
 /**
@@ -34,7 +34,14 @@ export const GET: RequestHandler = async () => {
 
 	const grid = new Map<string, string>();
 	for (const entry of entries) {
-		grid.set(`${entry.userId}:${entry.weekday}:${entry.period}`, entry.status);
+		grid.set(
+			`${entry.userId}:${entry.weekday}:${entry.period}`,
+			cellLabel({
+				status: entry.status === 'working' ? 'working' : 'not_working',
+				location: (entry.location as LocationValue | null) ?? null,
+				duty: entry.duty
+			})
+		);
 	}
 
 	const workbook = new ExcelJS.Workbook();
@@ -58,10 +65,10 @@ export const GET: RequestHandler = async () => {
 				const worksSlot = (JSON.parse(user.workingSlots) as string[]).includes(
 					slotKey(day.value, period.value)
 				);
-				const status = worksSlot
-					? (grid.get(`${user.id}:${day.value}:${period.value}`) ?? 'not_working')
-					: 'not_working';
-				row.getCell(i + 2).value = STATUS_LABELS[status] ?? status;
+				const label = worksSlot
+					? (grid.get(`${user.id}:${day.value}:${period.value}`) ?? 'Not working')
+					: 'Not working';
+				row.getCell(i + 2).value = label;
 			});
 		}
 	}

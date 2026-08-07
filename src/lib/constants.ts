@@ -4,21 +4,86 @@
  * in the database — add new statuses/categories here.
  */
 
-export const SESSION_STATUSES = [
-	{ value: 'working', label: 'Working' },
-	{ value: 'not_working', label: 'Not working' },
-	{ value: 'working_ratho', label: 'Working (Ratho)' }
+/** Places a working session can happen. First entry is the default. */
+export const LOCATIONS = [
+	{ value: 'east_calder', label: 'East Calder' },
+	{ value: 'ratho', label: 'Ratho' }
 ] as const;
 
-export type SessionStatus = (typeof SESSION_STATUSES)[number]['value'];
+export type LocationValue = (typeof LOCATIONS)[number]['value'];
 
-export const STATUS_LABELS: Record<string, string> = Object.fromEntries(
-	SESSION_STATUSES.map((s) => [s.value, s.label])
-);
+export const DEFAULT_LOCATION: LocationValue = LOCATIONS[0].value;
 
-export function isSessionStatus(value: string): value is SessionStatus {
-	return SESSION_STATUSES.some((s) => s.value === value);
+export function locationLabel(value: string | null): string {
+	return LOCATIONS.find((l) => l.value === value)?.label ?? (value ?? '');
 }
+
+/**
+ * The full state of one session cell: a status plus its sub-choices.
+ * Add statuses, locations or flags here — the picker, save validation
+ * and export all derive from these definitions.
+ */
+export type CellValue = {
+	status: 'working' | 'not_working';
+	location: LocationValue | null;
+	duty: boolean;
+};
+
+export const NOT_WORKING: CellValue = { status: 'not_working', location: null, duty: false };
+
+/** Wire format for a cell, e.g. "working:ratho:duty" or "not_working". */
+export function encodeCell(cell: CellValue): string {
+	if (cell.status !== 'working') return 'not_working';
+	return `working:${cell.location ?? DEFAULT_LOCATION}${cell.duty ? ':duty' : ''}`;
+}
+
+/** Parse and validate a wire-format cell key. Returns null for anything invalid. */
+export function decodeCell(key: string): CellValue | null {
+	if (key === 'not_working') return { ...NOT_WORKING };
+	const [status, location, ...flags] = key.split(':');
+	if (status !== 'working') return null;
+	if (!LOCATIONS.some((l) => l.value === location)) return null;
+	if (flags.length === 0) return { status: 'working', location: location as LocationValue, duty: false };
+	if (flags.length === 1 && flags[0] === 'duty') {
+		return { status: 'working', location: location as LocationValue, duty: true };
+	}
+	return null;
+}
+
+/**
+ * Human label, matching the established spreadsheet wording: the default
+ * location stays implicit ("Working"), everything else is parenthesised —
+ * "Working (Ratho)", "Working (Duty)", "Working (Ratho, Duty)".
+ */
+export function cellLabel(cell: CellValue): string {
+	if (cell.status !== 'working') return 'Not working';
+	const extras = [
+		cell.location && cell.location !== DEFAULT_LOCATION ? locationLabel(cell.location) : null,
+		cell.duty ? 'Duty' : null
+	].filter(Boolean);
+	return extras.length ? `Working (${extras.join(', ')})` : 'Working';
+}
+
+/** Every pickable cell state, in picker display order. */
+export const CELL_OPTIONS: { key: string; value: CellValue; label: string; pickerLabel: string }[] =
+	[
+		...LOCATIONS.flatMap((location) => [
+			`working:${location.value}`,
+			`working:${location.value}:duty`
+		]),
+		'not_working'
+	].map((key) => {
+		const value = decodeCell(key)!;
+		return {
+			key,
+			value,
+			label: cellLabel(value),
+			pickerLabel:
+				value.status !== 'working'
+					? 'Not working'
+					: `${locationLabel(value.location)}${value.duty ? ' — Duty' : ''}`
+		};
+	});
 
 export const USER_CATEGORIES = [
 	{ value: 'doctor', label: 'Doctor' },

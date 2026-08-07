@@ -2,8 +2,21 @@
 	import './layout.css';
 	import favicon from '$lib/assets/favicon.svg';
 	import { page } from '$app/state';
+	import { invalidateAll } from '$app/navigation';
+	import { env } from '$env/dynamic/public';
+	import { connect } from 'itty-sockets';
 
 	let { data, children } = $props();
+
+	// Live updates: when any admin saves the rota or edits users, the server
+	// broadcasts a content-free "changed" ping (see $lib/server/realtime.ts);
+	// every signed-in viewer re-fetches through their own session.
+	$effect(() => {
+		if (!env.PUBLIC_REALTIME_CHANNEL || !data.user) return;
+		const channel = connect(env.PUBLIC_REALTIME_CHANNEL);
+		channel.on('message', () => invalidateAll());
+		return () => channel.close();
+	});
 
 	const navLinks = $derived([
 		{ href: '/', label: 'Rota' },

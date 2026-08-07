@@ -55,8 +55,9 @@ export const authSessions = sqliteTable('auth_sessions', {
 
 /**
  * One row per person / weekday / half-day session.
- * `status` is text so new states (and later a `duty` flag column) can be
- * added without reshaping the table. Missing rows mean "Not working".
+ * A cell is status + location + duty ($lib/constants.ts CellValue);
+ * text columns keep new statuses/locations migration-free. Missing rows
+ * mean "Not working".
  */
 export const scheduleEntries = sqliteTable(
 	'schedule_entries',
@@ -71,8 +72,12 @@ export const scheduleEntries = sqliteTable(
 		weekday: integer('weekday').notNull(),
 		/** 'AM' (8am–1pm) | 'PM' (1pm–6pm) */
 		period: text('period').notNull(),
-		/** 'working' | 'not_working' | 'working_ratho' — see $lib/constants.ts */
+		/** 'working' | 'not_working' — see $lib/constants.ts */
 		status: text('status').notNull().default('not_working'),
+		/** Where a working session happens, e.g. 'east_calder' | 'ratho'; null unless working */
+		location: text('location'),
+		/** Whether this working session carries the Duty flag */
+		duty: integer('duty', { mode: 'boolean' }).notNull().default(false),
 		updatedAt: integer('updated_at', { mode: 'timestamp' })
 			.notNull()
 			.$defaultFn(() => new Date())

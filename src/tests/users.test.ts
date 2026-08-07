@@ -119,8 +119,8 @@ describe('edit user action', () => {
 	it('deletes schedule entries on slots the user no longer works', async () => {
 		const admin = await createUser({ role: 'admin' });
 		const target = await createUser({ email: 'np@example.com', workingSlots: '["1:AM","1:PM"]' });
-		await createEntry(target.id, 1, 'AM', 'working');
-		await createEntry(target.id, 1, 'PM', 'working');
+		await createEntry(target.id, 1, 'AM');
+		await createEntry(target.id, 1, 'PM');
 
 		// Now mornings-only on Monday.
 		await swallowRedirect(
@@ -140,7 +140,7 @@ describe('edit user action', () => {
 	it('removes all entries when no slots remain', async () => {
 		const admin = await createUser({ role: 'admin' });
 		const target = await createUser({ email: 'np@example.com' });
-		await createEntry(target.id, 2, 'AM', 'working');
+		await createEntry(target.id, 2, 'AM');
 
 		await swallowRedirect(
 			editActions.default(

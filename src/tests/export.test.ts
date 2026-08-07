@@ -43,8 +43,8 @@ describe('xlsx export', () => {
 
 	it('writes status labels, defaulting unscheduled slots to Not working', async () => {
 		const user = await createUser({ initials: 'DR1', workingSlots: '["1:AM","1:PM","2:AM"]' });
-		await createEntry(user.id, 1, 'AM', 'working');
-		await createEntry(user.id, 1, 'PM', 'working_ratho');
+		await createEntry(user.id, 1, 'AM');
+		await createEntry(user.id, 1, 'PM', { location: 'ratho' });
 		// 2:AM available but no entry saved.
 
 		const sheet = await exportSheet();
@@ -53,9 +53,19 @@ describe('xlsx export', () => {
 		expect(cell(sheet, 4, 2)).toBe('Not working'); // Tuesday AM, unscheduled
 	});
 
+	it('labels duty sessions', async () => {
+		const user = await createUser({ initials: 'DR1' });
+		await createEntry(user.id, 1, 'AM', { duty: true });
+		await createEntry(user.id, 1, 'PM', { location: 'ratho', duty: true });
+
+		const sheet = await exportSheet();
+		expect(cell(sheet, 2, 2)).toBe('Working (Duty)');
+		expect(cell(sheet, 3, 2)).toBe('Working (Ratho, Duty)');
+	});
+
 	it('forces Not working on slots outside the user’s working sessions, even with a stray entry', async () => {
 		const user = await createUser({ initials: 'DR1', workingSlots: '["1:AM"]' });
-		await createEntry(user.id, 5, 'PM', 'working'); // stray row on an unavailable slot
+		await createEntry(user.id, 5, 'PM'); // stray row on an unavailable slot
 
 		const sheet = await exportSheet();
 		expect(cell(sheet, 11, 2)).toBe('Not working'); // Friday PM

@@ -5,6 +5,7 @@ import { db } from '$lib/server/db';
 import { scheduleEntries, users } from '$lib/server/db/schema';
 import { hashPassword } from '$lib/server/auth';
 import { parseUserForm } from '$lib/server/user-form';
+import { broadcastChange } from '$lib/server/realtime';
 import type { Actions, PageServerLoad } from './$types';
 
 export const load: PageServerLoad = async ({ params }) => {
@@ -86,6 +87,7 @@ export const actions: Actions = {
 			await db.delete(scheduleEntries).where(inArray(scheduleEntries.id, staleIds));
 		}
 
+		broadcastChange('users');
 		redirect(303, '/users');
 	}
 };

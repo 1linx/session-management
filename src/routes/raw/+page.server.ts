@@ -27,6 +27,8 @@ export const load: PageServerLoad = async () => {
 			weekday: scheduleEntries.weekday,
 			period: scheduleEntries.period,
 			status: scheduleEntries.status,
+			location: scheduleEntries.location,
+			duty: scheduleEntries.duty,
 			updatedAt: scheduleEntries.updatedAt
 		})
 		.from(scheduleEntries)

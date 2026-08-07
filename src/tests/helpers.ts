@@ -47,16 +47,27 @@ export async function createUser(overrides: UserOverrides = {}) {
 	return row;
 }
 
-/** Insert a schedule entry and return the row. */
+/**
+ * Insert a schedule entry and return the row.
+ * Defaults to a plain working session at the default location.
+ */
 export async function createEntry(
 	userId: string,
 	weekday: number,
 	period: string,
-	status = 'working'
+	cell: { status?: string; location?: string | null; duty?: boolean } = {}
 ) {
+	const status = cell.status ?? 'working';
 	const [row] = await db
 		.insert(scheduleEntries)
-		.values({ userId, weekday, period, status })
+		.values({
+			userId,
+			weekday,
+			period,
+			status,
+			location: cell.location !== undefined ? cell.location : status === 'working' ? 'east_calder' : null,
+			duty: cell.duty ?? false
+		})
 		.returning();
 	return row;
 }

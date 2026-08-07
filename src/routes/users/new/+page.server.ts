@@ -3,6 +3,7 @@ import { db } from '$lib/server/db';
 import { users } from '$lib/server/db/schema';
 import { hashPassword } from '$lib/server/auth';
 import { parseUserForm } from '$lib/server/user-form';
+import { broadcastChange } from '$lib/server/realtime';
 import type { Actions } from './$types';
 
 export const actions: Actions = {
@@ -36,6 +37,7 @@ export const actions: Actions = {
 			throw error;
 		}
 
+		broadcastChange('users');
 		redirect(303, '/users');
 	}
 };
