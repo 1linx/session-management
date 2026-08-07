@@ -1,0 +1,86 @@
+@import 'tailwindcss';
+
+/* Neo-brutalist design tokens.
+   All text sits black-on-pastel for WCAG AAA contrast. */
+@theme {
+	--color-paper: #f2efe6;
+	--color-ink: #14120f;
+	--color-accent: #ffd23f;
+	--color-lilac: #c4b5fd;
+	--color-mint: #86efac;
+	--color-sky: #93c5fd;
+	--color-coral: #fda4af;
+
+	--shadow-brutal: 4px 4px 0 0 var(--color-ink);
+	--shadow-brutal-sm: 2px 2px 0 0 var(--color-ink);
+}
+
+@layer base {
+	/* Strong, always-visible keyboard focus indicator. */
+	:focus-visible {
+		outline: 3px solid var(--color-ink);
+		outline-offset: 2px;
+	}
+
+	body {
+		background-color: var(--color-paper);
+		color: var(--color-ink);
+	}
+}
+
+@layer components {
+	.nb-card {
+		@apply border-2 border-ink bg-white p-6 shadow-brutal;
+	}
+
+	.nb-btn {
+		@apply inline-block cursor-pointer border-2 border-ink bg-accent px-4 py-2 text-sm font-bold tracking-wide uppercase shadow-brutal-sm;
+	}
+	.nb-btn:hover {
+		@apply -translate-x-0.5 -translate-y-0.5;
+	}
+	.nb-btn:active {
+		@apply translate-x-0.5 translate-y-0.5 shadow-none;
+	}
+
+	.nb-btn-secondary {
+		@apply bg-white;
+	}
+
+	.nb-input {
+		@apply w-full border-2 border-ink bg-white px-3 py-2 shadow-brutal-sm;
+	}
+
+	.nb-label {
+		@apply mb-1 block text-sm font-bold tracking-wide uppercase;
+	}
+
+	/* Horizontal scroll container for wide tables, with an always-visible
+	   scrollbar (macOS overlay scrollbars otherwise hide until you scroll). */
+	.nb-scroll {
+		overflow-x: auto;
+		scrollbar-color: var(--color-ink) var(--color-paper); /* Firefox */
+	}
+	.nb-scroll::-webkit-scrollbar {
+		height: 14px;
+	}
+	.nb-scroll::-webkit-scrollbar-track {
+		background: var(--color-paper);
+		border-top: 2px solid var(--color-ink);
+	}
+	.nb-scroll::-webkit-scrollbar-thumb {
+		background: var(--color-ink);
+		border: 3px solid var(--color-paper);
+	}
+
+	.nb-table {
+		@apply w-full border-collapse border-2 border-ink bg-white text-sm;
+	}
+	.nb-table th,
+	.nb-table td {
+		@apply border-2 border-ink px-2 py-1.5 text-left;
+	}
+	.nb-table thead th {
+		@apply bg-accent font-bold uppercase;
+	}
+}
