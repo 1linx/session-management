@@ -55,6 +55,46 @@
 		@apply mb-1 block text-sm font-bold tracking-wide uppercase;
 	}
 
+	/* Page-load progress bar: grows across the top while SvelteKit navigates,
+	   removed the moment the new page renders. Fades in after 150ms so
+	   instant navigations never flash it. */
+	.nb-loading-bar {
+		position: fixed;
+		top: 0;
+		left: 0;
+		z-index: 100;
+		height: 5px;
+		width: 0;
+		background: var(--color-ink);
+		border-right: 5px solid var(--color-accent);
+		opacity: 0;
+		animation:
+			nb-loading-grow 3s cubic-bezier(0.15, 0.6, 0.3, 1) forwards,
+			nb-loading-appear 0.01s linear 0.15s forwards;
+	}
+
+	@keyframes nb-loading-grow {
+		0% {
+			width: 0;
+		}
+		100% {
+			width: 92%;
+		}
+	}
+
+	@keyframes nb-loading-appear {
+		to {
+			opacity: 1;
+		}
+	}
+
+	@media (prefers-reduced-motion: reduce) {
+		.nb-loading-bar {
+			animation: nb-loading-appear 0.01s linear 0.15s forwards;
+			width: 100%;
+		}
+	}
+
 	/* Horizontal scroll container for wide tables, with an always-visible
 	   scrollbar (macOS overlay scrollbars otherwise hide until you scroll). */
 	.nb-scroll {

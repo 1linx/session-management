@@ -68,6 +68,8 @@ export const scheduleEntries = sqliteTable(
 		userId: text('user_id')
 			.notNull()
 			.references(() => users.id, { onDelete: 'cascade' }),
+		/** The week this entry belongs to: its Monday as 'YYYY-MM-DD' */
+		weekStart: text('week_start').notNull(),
 		/** ISO weekday: 1 = Monday … 5 = Friday */
 		weekday: integer('weekday').notNull(),
 		/** 'AM' (8am–1pm) | 'PM' (1pm–6pm) */
@@ -82,5 +84,12 @@ export const scheduleEntries = sqliteTable(
 			.notNull()
 			.$defaultFn(() => new Date())
 	},
-	(table) => [uniqueIndex('schedule_slot_unique').on(table.userId, table.weekday, table.period)]
+	(table) => [
+		uniqueIndex('schedule_slot_unique').on(
+			table.userId,
+			table.weekStart,
+			table.weekday,
+			table.period
+		)
+	]
 );

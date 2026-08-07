@@ -79,10 +79,11 @@
 	</div>
 
 	<fieldset class="border-2 border-ink p-4 shadow-brutal-sm">
-		<legend class="px-2 text-sm font-bold uppercase">Working sessions</legend>
+		<legend class="px-2 text-sm font-bold uppercase">Standard sessions</legend>
 		<p class="mb-3 text-sm">
-			Tick the half-day sessions this person works — mornings only, afternoons only, or any mix.
-			The rota can only schedule ticked sessions; everything else always shows as “Not working”.
+			Tick the half-day sessions this person normally works — mornings only, afternoons only, or
+			any mix. “Use default values” on an empty week marks these as Working; any session can
+			still be set manually on the rota.
 		</p>
 		<table class="border-collapse">
 			<thead>

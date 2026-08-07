@@ -1,14 +1,18 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 import ExcelJS from 'exceljs';
 import { GET } from '../routes/export/+server';
+import { addWeeks, currentWeekStart } from '$lib/dates';
 import { createEntry, createUser, resetDb } from './helpers';
 
 type ExportEvent = Parameters<typeof GET>[0];
 
-async function exportSheet(): Promise<ExcelJS.Worksheet> {
-	const response = await GET({} as ExportEvent);
+async function exportSheet(week?: string): Promise<ExcelJS.Worksheet> {
+	const url = new URL(`http://localhost/export${week ? `?week=${week}` : ''}`);
+	const response = await GET({ url } as ExportEvent);
 	expect(response.headers.get('Content-Type')).toContain('spreadsheetml');
-	expect(response.headers.get('Content-Disposition')).toContain('rota.xlsx');
+	expect(response.headers.get('Content-Disposition')).toContain(
+		`rota-${week ?? currentWeekStart()}.xlsx`
+	);
 	const workbook = new ExcelJS.Workbook();
 	await workbook.xlsx.load(await response.arrayBuffer());
 	return workbook.worksheets[0];
@@ -63,12 +67,12 @@ describe('xlsx export', () => {
 		expect(cell(sheet, 3, 2)).toBe('Working (Ratho, Duty)');
 	});
 
-	it('forces Not working on slots outside the user’s working sessions, even with a stray entry', async () => {
+	it('exports entries outside standard availability too', async () => {
 		const user = await createUser({ initials: 'DR1', workingSlots: '["1:AM"]' });
-		await createEntry(user.id, 5, 'PM'); // stray row on an unavailable slot
+		await createEntry(user.id, 5, 'PM', { location: 'ratho' }); // non-standard extra session
 
 		const sheet = await exportSheet();
-		expect(cell(sheet, 11, 2)).toBe('Not working'); // Friday PM
+		expect(cell(sheet, 11, 2)).toBe('Working (Ratho)'); // Friday PM
 	});
 
 	it('excludes inactive and off-rota users', async () => {
@@ -84,5 +88,16 @@ describe('xlsx export', () => {
 	it('produces a sheet even with no users', async () => {
 		const sheet = await exportSheet();
 		expect(cell(sheet, 2, 1)).toBe('Monday AM');
+	});
+
+	it('exports only the requested week', async () => {
+		const user = await createUser({ initials: 'DR1' });
+		const nextWeek = addWeeks(currentWeekStart(), 1);
+		await createEntry(user.id, 1, 'AM', { location: 'ratho' }); // this week
+		await createEntry(user.id, 1, 'AM', { weekStart: nextWeek, duty: true });
+
+		expect(cell(await exportSheet(), 2, 2)).toBe('Working (Ratho)');
+		expect(cell(await exportSheet(nextWeek), 2, 2)).toBe('Working (Duty)');
+		expect(cell(await exportSheet(addWeeks(nextWeek, 3)), 2, 2)).toBe('Not working');
 	});
 });

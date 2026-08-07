@@ -116,32 +116,14 @@ describe('edit user action', () => {
 		expect(verifyPassword('original-pass', row.passwordHash)).toBe(false);
 	});
 
-	it('deletes schedule entries on slots the user no longer works', async () => {
+	it('keeps existing schedule entries when standard availability changes', async () => {
 		const admin = await createUser({ role: 'admin' });
 		const target = await createUser({ email: 'np@example.com', workingSlots: '["1:AM","1:PM"]' });
 		await createEntry(target.id, 1, 'AM');
 		await createEntry(target.id, 1, 'PM');
 
-		// Now mornings-only on Monday.
-		await swallowRedirect(
-			editActions.default(
-				editEvent(target.id, { ...baseFields, workingSlots: ['1:AM'], password: '' }, adminLocals(admin.id))
-			)
-		);
-
-		const rows = await db
-			.select()
-			.from(scheduleEntries)
-			.where(eq(scheduleEntries.userId, target.id));
-		expect(rows).toHaveLength(1);
-		expect(`${rows[0].weekday}:${rows[0].period}`).toBe('1:AM');
-	});
-
-	it('removes all entries when no slots remain', async () => {
-		const admin = await createUser({ role: 'admin' });
-		const target = await createUser({ email: 'np@example.com' });
-		await createEntry(target.id, 2, 'AM');
-
+		// Availability is only a default for new weeks — shrinking it must not
+		// delete anything already rostered.
 		await swallowRedirect(
 			editActions.default(
 				editEvent(target.id, { ...baseFields, workingSlots: [], password: '' }, adminLocals(admin.id))
@@ -150,7 +132,7 @@ describe('edit user action', () => {
 
 		expect(
 			await db.select().from(scheduleEntries).where(eq(scheduleEntries.userId, target.id))
-		).toHaveLength(0);
+		).toHaveLength(2);
 	});
 
 	it('blocks removing your own admin role', async () => {

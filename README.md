@@ -33,9 +33,15 @@ deploying anywhere real.**
   (read-only). Everyone can see everyone's times — that's intentional.
 - **Category**: `doctor` or `anp` — the working-hours standard that applies.
   New categories: add to `USER_CATEGORIES` in [src/lib/constants.ts](src/lib/constants.ts).
-- **Working sessions**: set per user by an admin as a Mon–Fri × AM/PM grid,
-  so someone can work mornings only, afternoons only, or any mix. The rota
-  can only schedule those sessions; everything else always reads "Not working".
+- **Standard sessions**: set per user by an admin as a Mon–Fri × AM/PM grid,
+  so someone can work mornings only, afternoons only, or any mix. These are
+  defaults, not restrictions — "Use default values" marks them as Working on
+  an empty week, but every cell on the rota can be set manually, and changing
+  someone's standard sessions never deletes what's already rostered.
+- **Weeks**: the rota is managed week by week. The grid shows one week
+  (identified by its Monday, `?week=YYYY-MM-DD`), defaulting to the current
+  week in UK time, with previous/next navigation. Admins can populate an
+  empty week by copying the week before it.
 - **Sessions**: each weekday splits into AM (8am–1pm) and PM (1pm–6pm). A
   session is a status plus sub-choices — currently working/not working, a
   location (East Calder by default, or Ratho) and a Duty flag. Admins set
@@ -56,7 +62,7 @@ deploying anywhere real.**
 | --- | --- | --- |
 | `/` | all users | The weekly rota grid (editable for admins) |
 | `/users` | admin | Add/edit users, working days, order, roles |
-| `/export` | all users | Download the rota as `rota.xlsx` |
+| `/export?week=` | all users | Download one week's rota as `rota-YYYY-MM-DD.xlsx` |
 | `/raw` | all users | Unprocessed view of the stored data |
 
 ## Tests

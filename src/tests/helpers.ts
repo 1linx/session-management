@@ -1,6 +1,7 @@
 import { db } from '$lib/server/db';
 import { authSessions, scheduleEntries, users } from '$lib/server/db/schema';
 import { hashPassword } from '$lib/server/auth';
+import { currentWeekStart } from '$lib/dates';
 import { isRedirect, type Cookies } from '@sveltejs/kit';
 import { vi } from 'vitest';
 
@@ -49,19 +50,21 @@ export async function createUser(overrides: UserOverrides = {}) {
 
 /**
  * Insert a schedule entry and return the row.
- * Defaults to a plain working session at the default location.
+ * Defaults to a plain working session at the default location, in the
+ * current week.
  */
 export async function createEntry(
 	userId: string,
 	weekday: number,
 	period: string,
-	cell: { status?: string; location?: string | null; duty?: boolean } = {}
+	cell: { status?: string; location?: string | null; duty?: boolean; weekStart?: string } = {}
 ) {
 	const status = cell.status ?? 'working';
 	const [row] = await db
 		.insert(scheduleEntries)
 		.values({
 			userId,
+			weekStart: cell.weekStart ?? currentWeekStart(),
 			weekday,
 			period,
 			status,

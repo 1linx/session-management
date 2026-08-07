@@ -29,9 +29,16 @@ const insertUser = db.prepare(`
 	VALUES (@id, @email, @passwordHash, @name, @initials, @role, @category, @workingSlots, @displayOrder, @onRota, 1, @createdAt)
 `);
 const insertEntry = db.prepare(`
-	INSERT INTO schedule_entries (id, user_id, weekday, period, status, location, duty, updated_at)
-	VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+	INSERT INTO schedule_entries (id, user_id, week_start, weekday, period, status, location, duty, updated_at)
+	VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
 `);
+
+// The sample rota goes into the current week (Monday, Europe/London).
+const today = new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/London' }).format(new Date());
+const todayUtc = new Date(`${today}T00:00:00Z`);
+const weekStart = new Date(todayUtc.getTime() - ((todayUtc.getUTCDay() + 6) % 7) * 86400000)
+	.toISOString()
+	.slice(0, 10);
 
 // Sample rota lifted from example.xlsx.
 // Weekdays: 1 = Monday … 5 = Friday. W = working (East Calder), N = not working, R = working (Ratho).
@@ -93,7 +100,7 @@ const seedAll = db.transaction(() => {
 		for (let d = 1; d <= 5; d++) {
 			['AM', 'PM'].forEach((period, pi) => {
 				const cell = STATUS[sessions[(d - 1) * 2 + pi]];
-				insertEntry.run(randomUUID(), userId, d, period, cell.status, cell.location, cell.duty, now);
+				insertEntry.run(randomUUID(), userId, weekStart, d, period, cell.status, cell.location, cell.duty, now);
 			});
 		}
 	});

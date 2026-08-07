@@ -54,6 +54,7 @@
 				<tr>
 					<th scope="col">id</th>
 					<th scope="col">user</th>
+					<th scope="col">week_start</th>
 					<th scope="col">weekday</th>
 					<th scope="col">period</th>
 					<th scope="col">status</th>
@@ -67,6 +68,7 @@
 					<tr>
 						<td class="font-mono text-xs">{entry.id}</td>
 						<td>{entry.initials}</td>
+						<td class="font-mono">{entry.weekStart}</td>
 						<td>{entry.weekday}</td>
 						<td>{entry.period}</td>
 						<td class="font-mono">{entry.status}</td>

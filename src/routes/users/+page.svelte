@@ -41,7 +41,7 @@
 				<th scope="col">Email</th>
 				<th scope="col">Category</th>
 				<th scope="col">User type</th>
-				<th scope="col">Working sessions</th>
+				<th scope="col">Standard sessions</th>
 				<th scope="col">Rota order</th>
 				<th scope="col">Status</th>
 				<th scope="col"><span class="sr-only">Actions</span></th>

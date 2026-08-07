@@ -2,19 +2,21 @@ import ExcelJS from 'exceljs';
 import { and, asc, eq, inArray } from 'drizzle-orm';
 import { db } from '$lib/server/db';
 import { scheduleEntries, users } from '$lib/server/db/schema';
-import { PERIODS, WEEKDAYS, cellLabel, slotKey, type LocationValue } from '$lib/constants';
+import { PERIODS, WEEKDAYS, cellLabel, type LocationValue } from '$lib/constants';
+import { resolveWeek } from '$lib/dates';
 import type { RequestHandler } from './$types';
 
 /**
- * Downloads the rota as .xlsx, matching example.xlsx:
- * staff initials across the top, "Monday AM" … "Friday PM" down the side.
+ * Downloads one week's rota as .xlsx (?week=YYYY-MM-DD, defaulting to the
+ * current week), matching example.xlsx: staff initials across the top,
+ * "Monday AM" … "Friday PM" down the side.
  */
-export const GET: RequestHandler = async () => {
+export const GET: RequestHandler = async ({ url }) => {
+	const week = resolveWeek(url.searchParams.get('week'));
 	const rotaUsers = await db
 		.select({
 			id: users.id,
-			initials: users.initials,
-			workingSlots: users.workingSlots
+			initials: users.initials
 		})
 		.from(users)
 		.where(and(eq(users.active, true), eq(users.onRota, true)))
@@ -25,9 +27,12 @@ export const GET: RequestHandler = async () => {
 				.select()
 				.from(scheduleEntries)
 				.where(
-					inArray(
-						scheduleEntries.userId,
-						rotaUsers.map((u) => u.id)
+					and(
+						eq(scheduleEntries.weekStart, week),
+						inArray(
+							scheduleEntries.userId,
+							rotaUsers.map((u) => u.id)
+						)
 					)
 				)
 		: [];
@@ -45,7 +50,7 @@ export const GET: RequestHandler = async () => {
 	}
 
 	const workbook = new ExcelJS.Workbook();
-	const sheet = workbook.addWorksheet('Rota');
+	const sheet = workbook.addWorksheet(`Rota w-c ${week}`);
 
 	// Header row: blank corner, then initials.
 	const header = sheet.getRow(1);
@@ -62,13 +67,8 @@ export const GET: RequestHandler = async () => {
 			row.getCell(1).value = `${day.label} ${period.label}`;
 			row.getCell(1).font = { bold: true };
 			rotaUsers.forEach((user, i) => {
-				const worksSlot = (JSON.parse(user.workingSlots) as string[]).includes(
-					slotKey(day.value, period.value)
-				);
-				const label = worksSlot
-					? (grid.get(`${user.id}:${day.value}:${period.value}`) ?? 'Not working')
-					: 'Not working';
-				row.getCell(i + 2).value = label;
+				row.getCell(i + 2).value =
+					grid.get(`${user.id}:${day.value}:${period.value}`) ?? 'Not working';
 			});
 		}
 	}
@@ -89,7 +89,7 @@ export const GET: RequestHandler = async () => {
 	return new Response(new Uint8Array(buffer), {
 		headers: {
 			'Content-Type': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-			'Content-Disposition': 'attachment; filename="rota.xlsx"'
+			'Content-Disposition': `attachment; filename="rota-${week}.xlsx"`
 		}
 	});
 };

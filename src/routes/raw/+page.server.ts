@@ -24,6 +24,7 @@ export const load: PageServerLoad = async () => {
 		.select({
 			id: scheduleEntries.id,
 			initials: users.initials,
+			weekStart: scheduleEntries.weekStart,
 			weekday: scheduleEntries.weekday,
 			period: scheduleEntries.period,
 			status: scheduleEntries.status,
@@ -33,7 +34,12 @@ export const load: PageServerLoad = async () => {
 		})
 		.from(scheduleEntries)
 		.innerJoin(users, eq(scheduleEntries.userId, users.id))
-		.orderBy(asc(users.displayOrder), asc(scheduleEntries.weekday), asc(scheduleEntries.period));
+		.orderBy(
+			asc(scheduleEntries.weekStart),
+			asc(users.displayOrder),
+			asc(scheduleEntries.weekday),
+			asc(scheduleEntries.period)
+		);
 
 	return { rawUsers: allUsers, rawEntries: entries };
 };

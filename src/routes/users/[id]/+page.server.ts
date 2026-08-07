@@ -1,8 +1,7 @@
 import { error, fail, redirect } from '@sveltejs/kit';
-import { eq, inArray } from 'drizzle-orm';
-import { slotKey } from '$lib/constants';
+import { eq } from 'drizzle-orm';
 import { db } from '$lib/server/db';
-import { scheduleEntries, users } from '$lib/server/db/schema';
+import { users } from '$lib/server/db/schema';
 import { hashPassword } from '$lib/server/auth';
 import { parseUserForm } from '$lib/server/user-form';
 import { broadcastChange } from '$lib/server/realtime';
@@ -74,18 +73,8 @@ export const actions: Actions = {
 			throw err;
 		}
 
-		// Remove scheduled sessions on slots this person no longer works.
-		const slots = new Set(values.workingSlots);
-		const entries = await db
-			.select({ id: scheduleEntries.id, weekday: scheduleEntries.weekday, period: scheduleEntries.period })
-			.from(scheduleEntries)
-			.where(eq(scheduleEntries.userId, params.id));
-		const staleIds = entries
-			.filter((e) => !slots.has(slotKey(e.weekday, e.period)))
-			.map((e) => e.id);
-		if (staleIds.length > 0) {
-			await db.delete(scheduleEntries).where(inArray(scheduleEntries.id, staleIds));
-		}
+		// Standard availability only drives defaults for new weeks — changing it
+		// deliberately leaves existing rota entries untouched.
 
 		broadcastChange('users');
 		redirect(303, '/users');

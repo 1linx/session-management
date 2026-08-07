@@ -1,7 +1,7 @@
 <script lang="ts">
 	import './layout.css';
 	import favicon from '$lib/assets/favicon.svg';
-	import { page } from '$app/state';
+	import { navigating, page } from '$app/state';
 	import { invalidateAll } from '$app/navigation';
 	import { env } from '$env/dynamic/public';
 	import { connect } from 'itty-sockets';
@@ -34,10 +34,14 @@
 	Skip to main content
 </a>
 
+{#if navigating.to}
+	<div class="nb-loading-bar" aria-hidden="true"></div>
+{/if}
+
 {#if data.user}
 	<header class="border-b-2 border-ink bg-lilac">
 		<div class="flex flex-wrap items-center gap-4 px-2 py-3 sm:px-3">
-			<span class="text-xl font-black tracking-tight uppercase">Time Management</span>
+			<span class="text-xl font-black tracking-tight uppercase">Session Manager - ECMP</span>
 			<nav aria-label="Main">
 				<ul class="flex flex-wrap items-center gap-2">
 					{#each navLinks as link (link.href)}
@@ -54,15 +58,6 @@
 							</a>
 						</li>
 					{/each}
-					<li>
-						<a
-							href="/export"
-							data-sveltekit-preload-data="off"
-							class="inline-block border-2 border-ink bg-mint px-3 py-1 text-sm font-bold uppercase shadow-brutal-sm"
-						>
-							Export .xlsx
-						</a>
-					</li>
 				</ul>
 			</nav>
 			<div class="ms-auto flex items-center gap-3">
