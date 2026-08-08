@@ -48,3 +48,6 @@ DEPLOYMENT.md
 
 # Per-server PM2 config (contains the real domain)
 ecosystem.config.cjs
+
+# Local deploy helper (not committed)
+deploy.sh
