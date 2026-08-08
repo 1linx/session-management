@@ -42,3 +42,6 @@ npm-debug.log*
 
 # Project brief (kept locally, not part of the repo)
 INSTRUCTIONS.md
+
+# Deployment notes (kept locally, not part of the repo)
+DEPLOYMENT.md
