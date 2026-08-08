@@ -44,7 +44,7 @@ describe('sessions', () => {
 		const user = await createUser();
 		const { token } = await createSession(user.id);
 		const sessionUser = await validateSession(token);
-		expect(sessionUser).toMatchObject({ id: user.id, email: user.email, role: 'viewer' });
+		expect(sessionUser).toMatchObject({ id: user.id, initials: user.initials, role: 'viewer' });
 	});
 
 	it('stores only a hash of the token', async () => {

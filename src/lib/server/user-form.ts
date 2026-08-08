@@ -9,7 +9,6 @@ import {
 export type UserFormValues = {
 	name: string;
 	initials: string;
-	email: string;
 	role: string;
 	category: string;
 	standardSlots: StandardSlots;
@@ -37,9 +36,6 @@ export function parseUserForm(data: FormData): UserFormResult {
 		initials: String(data.get('initials') ?? '')
 			.trim()
 			.toUpperCase(),
-		email: String(data.get('email') ?? '')
-			.trim()
-			.toLowerCase(),
 		role: String(data.get('role') ?? ''),
 		category: String(data.get('category') ?? ''),
 		standardSlots,
@@ -53,11 +49,10 @@ export function parseUserForm(data: FormData): UserFormResult {
 	const invalid = (message: string): UserFormResult => ({ ok: false, message, values });
 
 	if (!values.name) return invalid('Enter a name.');
-	if (!values.initials || values.initials.length > 8) {
-		return invalid('Enter initials (up to 8 characters). These appear on the rota.');
-	}
-	if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(values.email)) {
-		return invalid('Enter a valid email address.');
+	if (!values.initials || values.initials.length > 8 || /\s/.test(values.initials)) {
+		return invalid(
+			'Enter initials (up to 8 characters, no spaces). These appear on the rota and are the login username.'
+		);
 	}
 	if (!USER_ROLES.some((r) => r.value === values.role)) return invalid('Choose a user type.');
 	if (!USER_CATEGORIES.some((c) => c.value === values.category)) {

@@ -13,7 +13,6 @@
 	type Values = {
 		name?: string;
 		initials?: string;
-		email?: string;
 		role?: string;
 		category?: string;
 		standardSlots?: StandardSlots;
@@ -49,21 +48,21 @@
 			<input id="name" name="name" required value={values.name ?? ''} class="nb-input" />
 		</div>
 		<div>
-			<label for="initials" class="nb-label">Initials (shown on rota)</label>
+			<label for="initials" class="nb-label">Initials</label>
 			<input
 				id="initials"
 				name="initials"
 				required
 				maxlength="8"
+				autocapitalize="characters"
 				value={values.initials ?? ''}
-				class="nb-input"
+				class="nb-input uppercase"
+				aria-describedby="initials-hint"
 			/>
+			<p id="initials-hint" class="mt-1 text-sm">
+				Shown on the rota, and used as their login username. Must be unique.
+			</p>
 		</div>
-	</div>
-
-	<div>
-		<label for="email" class="nb-label">Email address</label>
-		<input id="email" name="email" type="email" required value={values.email ?? ''} class="nb-input" />
 	</div>
 
 	<div class="grid gap-5 sm:grid-cols-2">

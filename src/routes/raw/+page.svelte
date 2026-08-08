@@ -17,7 +17,6 @@
 			<thead>
 				<tr>
 					<th scope="col">id</th>
-					<th scope="col">email</th>
 					<th scope="col">name</th>
 					<th scope="col">initials</th>
 					<th scope="col">role</th>
@@ -32,7 +31,6 @@
 				{#each data.rawUsers as user (user.id)}
 					<tr>
 						<td class="font-mono text-xs">{user.id}</td>
-						<td>{user.email}</td>
 						<td>{user.name}</td>
 						<td>{user.initials}</td>
 						<td>{user.role}</td>

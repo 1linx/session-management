@@ -8,7 +8,6 @@ export const load: PageServerLoad = async () => {
 	const allUsers = await db
 		.select({
 			id: users.id,
-			email: users.email,
 			name: users.name,
 			initials: users.initials,
 			role: users.role,

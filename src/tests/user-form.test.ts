@@ -12,7 +12,6 @@ function form(fields: Record<string, string | string[]>): FormData {
 const validFields = {
 	name: 'Jo Bloggs',
 	initials: 'jb',
-	email: 'Jo.Bloggs@Example.com',
 	role: 'viewer',
 	category: 'anp',
 	'slot:1:AM': 'east_calder',
@@ -32,7 +31,6 @@ describe('parseUserForm', () => {
 		expect(result.values).toMatchObject({
 			name: 'Jo Bloggs',
 			initials: 'JB', // uppercased
-			email: 'jo.bloggs@example.com', // lowercased
 			role: 'viewer',
 			category: 'anp',
 			standardSlots: { '1:AM': 'east_calder', '3:PM': 'ratho' },
@@ -79,7 +77,7 @@ describe('parseUserForm', () => {
 		['missing name', { name: '' }],
 		['missing initials', { initials: '' }],
 		['overlong initials', { initials: 'ABCDEFGHI' }],
-		['invalid email', { email: 'not-an-email' }],
+		['initials with spaces', { initials: 'D R' }],
 		['unknown role', { role: 'superadmin' }],
 		['unknown category', { category: 'nurse' }],
 		['non-integer display order', { displayOrder: '1.5' }],

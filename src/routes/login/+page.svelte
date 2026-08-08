@@ -19,15 +19,17 @@
 		{/if}
 
 		<div>
-			<label for="email" class="nb-label">Email address</label>
+			<label for="initials" class="nb-label">Initials</label>
 			<input
-				id="email"
-				name="email"
-				type="email"
-				autocomplete="email"
+				id="initials"
+				name="initials"
+				type="text"
+				autocomplete="username"
+				autocapitalize="characters"
+				maxlength="8"
 				required
-				value={form?.email ?? ''}
-				class="nb-input"
+				value={form?.initials ?? ''}
+				class="nb-input uppercase"
 			/>
 		</div>
 

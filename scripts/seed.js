@@ -25,8 +25,8 @@ function hashPassword(password) {
 const now = Math.floor(Date.now() / 1000);
 
 const insertUser = db.prepare(`
-	INSERT INTO users (id, email, password_hash, name, initials, role, category, working_slots, can_work_ratho, display_order, on_rota, active, created_at)
-	VALUES (@id, @email, @passwordHash, @name, @initials, @role, @category, @standardSlots, @canWorkRatho, @displayOrder, @onRota, 1, @createdAt)
+	INSERT INTO users (id, password_hash, name, initials, role, category, working_slots, can_work_ratho, display_order, on_rota, active, created_at)
+	VALUES (@id, @passwordHash, @name, @initials, @role, @category, @standardSlots, @canWorkRatho, @displayOrder, @onRota, 1, @createdAt)
 `);
 const insertEntry = db.prepare(`
 	INSERT INTO schedule_entries (id, user_id, week_start, weekday, period, status, location, role, updated_at)
@@ -62,7 +62,6 @@ const people = [
 const seedAll = db.transaction(() => {
 	insertUser.run({
 		id: randomUUID(),
-		email: 'admin@example.com',
 		passwordHash: hashPassword('changeme-admin'),
 		name: 'Administrator',
 		initials: 'ADM',
@@ -93,7 +92,6 @@ const seedAll = db.transaction(() => {
 		}
 		insertUser.run({
 			id: userId,
-			email: `${p.initials.toLowerCase()}@example.com`,
 			passwordHash: hashPassword('changeme'),
 			name: p.initials,
 			initials: p.initials,
@@ -115,4 +113,4 @@ const seedAll = db.transaction(() => {
 });
 
 seedAll();
-console.log('Seeded admin@example.com (password: changeme-admin) and 9 sample rota users (password: changeme).');
+console.log('Seeded admin ADM (password: changeme-admin) and 9 sample rota users, login = initials (password: changeme).');

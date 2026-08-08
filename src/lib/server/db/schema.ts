@@ -13,11 +13,13 @@ export const users = sqliteTable('users', {
 	id: text('id')
 		.primaryKey()
 		.$defaultFn(() => crypto.randomUUID()),
-	email: text('email').notNull().unique(),
 	passwordHash: text('password_hash').notNull(),
 	name: text('name').notNull(),
-	/** Short label shown on the rota / spreadsheet, e.g. "DR1", "ANP2" */
-	initials: text('initials').notNull(),
+	/**
+	 * Short label shown on the rota / spreadsheet, e.g. "DR1", "ANP2".
+	 * Also the login username — hence unique. Stored uppercase.
+	 */
+	initials: text('initials').notNull().unique(),
 	/** 'admin' | 'viewer' */
 	role: text('role').notNull().default('viewer'),
 	/** 'doctor' | 'anp' — the working-hours category */

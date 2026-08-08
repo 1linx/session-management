@@ -22,7 +22,6 @@ type EditEvent = Parameters<(typeof editActions)["save"]>[0];
 const baseFields = {
 	name: 'New Person',
 	initials: 'NP',
-	email: 'np@example.com',
 	role: 'viewer',
 	category: 'anp',
 	'slot:1:AM': 'east_calder',
@@ -42,8 +41,8 @@ function editEvent(id: string, fields: Record<string, string | string[]>, locals
 	return { request: formRequest(fields), params: { id }, locals } as unknown as EditEvent;
 }
 
-async function getUser(email: string) {
-	const [row] = await db.select().from(users).where(eq(users.email, email));
+async function getUser(initials: string) {
+	const [row] = await db.select().from(users).where(eq(users.initials, initials));
 	return row;
 }
 
@@ -55,7 +54,7 @@ describe('create user action', () => {
 			newActions.default(newEvent({ ...baseFields, password: 'password123' }))
 		).rejects.toSatisfy((e: unknown) => isRedirect(e) && e.location === '/users');
 
-		const row = await getUser('np@example.com');
+		const row = await getUser('NP');
 		expect(row).toMatchObject({
 			name: 'New Person',
 			initials: 'NP',
@@ -77,11 +76,11 @@ describe('create user action', () => {
 	it('requires a password', async () => {
 		const result = await newActions.default(newEvent({ ...baseFields, password: '' }));
 		expect(result).toMatchObject({ status: 400 });
-		expect(await getUser('np@example.com')).toBeUndefined();
+		expect(await getUser('NP')).toBeUndefined();
 	});
 
-	it('rejects a duplicate email address', async () => {
-		await createUser({ email: 'np@example.com' });
+	it('rejects duplicate initials', async () => {
+		await createUser({ initials: 'NP' });
 		const result = await newActions.default(
 			newEvent({ ...baseFields, password: 'password123' })
 		);
@@ -90,7 +89,7 @@ describe('create user action', () => {
 
 	it('returns validation failures with the submitted values', async () => {
 		const result = await newActions.default(
-			newEvent({ ...baseFields, email: 'not-an-email', password: 'password123' })
+			newEvent({ ...baseFields, initials: 'FARTOOLONG', password: 'password123' })
 		);
 		expect(result).toMatchObject({ status: 400, data: { values: { name: 'New Person' } } });
 	});
@@ -101,7 +100,7 @@ describe('edit user action', () => {
 
 	it('updates fields and redirects', async () => {
 		const admin = await createUser({ role: 'admin' });
-		const target = await createUser({ email: 'np@example.com' });
+		const target = await createUser({ initials: 'NP' });
 
 		await expect(
 			editActions.save(
@@ -109,32 +108,32 @@ describe('edit user action', () => {
 			)
 		).rejects.toSatisfy(isRedirect);
 
-		const row = await getUser('np@example.com');
+		const row = await getUser('NP');
 		expect(row.name).toBe('Renamed');
 	});
 
 	it('keeps the password when the field is blank, replaces it when set', async () => {
 		const admin = await createUser({ role: 'admin' });
-		const target = await createUser({ email: 'np@example.com', password: 'original-pass' });
+		const target = await createUser({ initials: 'NP', password: 'original-pass' });
 
 		await swallowRedirect(
 			editActions.save(editEvent(target.id, { ...baseFields, password: '' }, adminLocals(admin.id)))
 		);
-		expect(verifyPassword('original-pass', (await getUser('np@example.com')).passwordHash)).toBe(true);
+		expect(verifyPassword('original-pass', (await getUser('NP')).passwordHash)).toBe(true);
 
 		await swallowRedirect(
 			editActions.save(
 				editEvent(target.id, { ...baseFields, password: 'new-password' }, adminLocals(admin.id))
 			)
 		);
-		const row = await getUser('np@example.com');
+		const row = await getUser('NP');
 		expect(verifyPassword('new-password', row.passwordHash)).toBe(true);
 		expect(verifyPassword('original-pass', row.passwordHash)).toBe(false);
 	});
 
 	it('keeps existing schedule entries when standard availability changes', async () => {
 		const admin = await createUser({ role: 'admin' });
-		const target = await createUser({ email: 'np@example.com', standardSlots: slotsAt(['1:AM', '1:PM']) });
+		const target = await createUser({ initials: 'NP', standardSlots: slotsAt(['1:AM', '1:PM']) });
 		await createEntry(target.id, 1, 'AM');
 		await createEntry(target.id, 1, 'PM');
 
@@ -151,36 +150,36 @@ describe('edit user action', () => {
 	});
 
 	it('blocks removing your own admin role', async () => {
-		const admin = await createUser({ role: 'admin', email: 'np@example.com' });
+		const admin = await createUser({ role: 'admin', initials: 'NP' });
 
 		const result = await editActions.save(
 			editEvent(admin.id, { ...baseFields, role: 'viewer', password: '' }, adminLocals(admin.id))
 		);
 		expect(result).toMatchObject({ status: 400 });
-		expect((await getUser('np@example.com')).role).toBe('admin');
+		expect((await getUser('NP')).role).toBe('admin');
 	});
 
 	it('blocks deactivating your own account', async () => {
-		const admin = await createUser({ role: 'admin', email: 'np@example.com' });
+		const admin = await createUser({ role: 'admin', initials: 'NP' });
 		const { active: _active, ...fieldsWithoutActive } = baseFields;
 
 		const result = await editActions.save(
 			editEvent(admin.id, { ...fieldsWithoutActive, role: 'admin', password: '' }, adminLocals(admin.id))
 		);
 		expect(result).toMatchObject({ status: 400 });
-		expect((await getUser('np@example.com')).active).toBe(true);
+		expect((await getUser('NP')).active).toBe(true);
 	});
 
 	it('allows demoting a different admin', async () => {
 		const admin = await createUser({ role: 'admin' });
-		const other = await createUser({ role: 'admin', email: 'np@example.com' });
+		const other = await createUser({ role: 'admin', initials: 'NP' });
 
 		await swallowRedirect(
 			editActions.save(
 				editEvent(other.id, { ...baseFields, role: 'viewer', password: '' }, adminLocals(admin.id))
 			)
 		);
-		expect((await getUser('np@example.com')).role).toBe('viewer');
+		expect((await getUser('NP')).role).toBe('viewer');
 	});
 
 	it('404s for an unknown user id', async () => {
@@ -203,7 +202,7 @@ describe('delete user action', () => {
 
 	it('removes the user, their entries and their sessions, then redirects', async () => {
 		const admin = await createUser({ role: 'admin' });
-		const target = await createUser({ email: 'np@example.com' });
+		const target = await createUser({ initials: 'NP' });
 		await createEntry(target.id, 1, 'AM');
 		await createEntry(target.id, 2, 'PM', { status: 'sick', location: null });
 		const { token } = await createSession(target.id);
@@ -212,7 +211,7 @@ describe('delete user action', () => {
 			editActions.delete(deleteEvent(target.id, adminLocals(admin.id)))
 		).rejects.toSatisfy((e: unknown) => isRedirect(e) && e.location === '/users');
 
-		expect(await getUser('np@example.com')).toBeUndefined();
+		expect(await getUser('NP')).toBeUndefined();
 		expect(
 			await db.select().from(scheduleEntries).where(eq(scheduleEntries.userId, target.id))
 		).toHaveLength(0);
@@ -220,10 +219,10 @@ describe('delete user action', () => {
 	});
 
 	it('blocks deleting your own account', async () => {
-		const admin = await createUser({ role: 'admin', email: 'np@example.com' });
+		const admin = await createUser({ role: 'admin', initials: 'NP' });
 		const result = await editActions.delete(deleteEvent(admin.id, adminLocals(admin.id)));
 		expect(result).toMatchObject({ status: 400 });
-		expect(await getUser('np@example.com')).toBeDefined();
+		expect(await getUser('NP')).toBeDefined();
 	});
 
 	it('404s for an unknown user id', async () => {

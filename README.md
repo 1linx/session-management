@@ -11,8 +11,8 @@ board standards.
 - **SQLite** via better-sqlite3 + **Drizzle ORM** — no database server to run
 - **Tailwind CSS 4** with a neo-brutalist design, accessibility-first
 - **exceljs** for the `.xlsx` rota export
-- Email + password auth (scrypt via `node:crypto`, session cookies) — no
-  external services
+- Initials + password auth (scrypt via `node:crypto`, session cookies) — no
+  external services, no email addresses stored
 
 ## Getting started
 
@@ -23,8 +23,8 @@ npm run db:seed              # admin account + sample rota from example.xlsx
 npm run dev
 ```
 
-Log in as `admin@example.com` / `changeme-admin` (sample staff accounts are
-`dr1@example.com` … `anp2@example.com` / `changeme`). **Change these before
+Log in with initials as the username: admin is `ADM` / `changeme-admin`
+(sample staff are `DR1` … `ANP2` / `changeme`). **Change these before
 deploying anywhere real.**
 
 ## Concepts
@@ -49,11 +49,9 @@ deploying anywhere real.**
   (identified by its Monday, `?week=YYYY-MM-DD`), defaulting to the current
   week in UK time, with previous/next navigation. Admins can populate an
   empty week by copying the week before it.
-- **Sessions**: each weekday splits into AM (8am–1pm) and PM (1pm–6pm). A
-  session is a status plus sub-choices — currently working/not working, a
-  location (East Calder by default, or Ratho) and a Duty flag. Admins set
-  them via a popout picker on each rota cell. New statuses, locations or
-  flags: extend `CellValue`/`CELL_OPTIONS` in the same file.
+- **Sessions**: each weekday splits into AM (8am–1pm) and PM (1pm–6pm),
+  set via a popout picker on each rota cell. New statuses, locations or
+  roles: extend `CellValue`/`CELL_OPTIONS` in [src/lib/constants.ts](src/lib/constants.ts).
 - **Live updates**: when an admin saves the rota or edits users, every
   signed-in viewer's page refreshes automatically via a pub/sub channel on
   [ittysockets.com](https://ittysockets.com). The channel (set via
@@ -122,17 +120,17 @@ route modules and invoked with stub request events
 — e.g. the Duty roster — can be tested the same way: add a `*.test.ts` under
 `src/tests/`.
 
-Current coverage: domain constants, user-form validation, password hashing,
-session lifecycle (expiry, sliding renewal, revocation), the login action,
-rota load/save rules (slot availability, status validation, role checks), user
-create/edit (slot cleanup, lockout guards, duplicate emails) and the xlsx
-export layout.
+Current coverage: domain constants, date/week helpers, user-form validation,
+password hashing, session lifecycle (expiry, sliding renewal, revocation),
+the login action, week-scoped rota load/save, the empty-week bootstraps, the
+staffing rules engine and Auto-fix behaviours, user create/edit/delete
+(lockout guards, duplicate initials) and the xlsx export layout.
 
 ## Planned next (from the brief)
 
-- **Duty roster**: `Duty` flag on working sessions plus automatic warnings
-  when too few Doctors are on duty. The schema anticipates this — add a
-  `duty` column to `schedule_entries`.
+- Annual leave tracking with entitlement summaries.
+- Special-activity allocations (admin / minor surgery / other).
+- Cross-site auto-allocation history ("sub-rota").
 - **Other user sets**: partition by adding a `groupId` to `users` and scoping
   queries by it.
 

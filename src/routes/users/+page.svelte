@@ -32,9 +32,8 @@
 		<caption class="sr-only">All users, in rota order</caption>
 		<thead>
 			<tr>
-				<th scope="col">Initials</th>
+				<th scope="col">Initials (login)</th>
 				<th scope="col">Name</th>
-				<th scope="col">Email</th>
 				<th scope="col">Category</th>
 				<th scope="col">User type</th>
 				<th scope="col">Standard sessions</th>
@@ -48,7 +47,6 @@
 				<tr class={user.active ? '' : 'bg-neutral-200'}>
 					<td class="font-black">{user.initials}</td>
 					<td>{user.name}</td>
-					<td>{user.email}</td>
 					<td>{categoryLabel(user.category)}</td>
 					<td>{roleLabel(user.role)}</td>
 					<td>

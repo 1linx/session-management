@@ -9,7 +9,6 @@ export const load: PageServerLoad = async () => {
 			id: users.id,
 			name: users.name,
 			initials: users.initials,
-			email: users.email,
 			role: users.role,
 			category: users.category,
 			standardSlots: users.standardSlots,

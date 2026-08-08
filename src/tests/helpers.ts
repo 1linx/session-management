@@ -33,7 +33,6 @@ export async function createUser(overrides: UserOverrides = {}) {
 	const [row] = await db
 		.insert(users)
 		.values({
-			email: `user${userCounter}@example.com`,
 			passwordHash: hashPassword(password ?? 'password123'),
 			name: `User ${userCounter}`,
 			initials: `U${userCounter}`,
@@ -108,9 +107,9 @@ export function fakeCookies(): Cookies & { jar: Map<string, string> } {
 }
 
 export const adminLocals = (id: string) => ({
-	user: { id, email: 'a@example.com', name: 'Admin', initials: 'ADM', role: 'admin' }
+	user: { id, name: 'Admin', initials: 'ADM', role: 'admin' }
 });
 
 export const viewerLocals = (id: string) => ({
-	user: { id, email: 'v@example.com', name: 'Viewer', initials: 'VW', role: 'viewer' }
+	user: { id, name: 'Viewer', initials: 'VW', role: 'viewer' }
 });

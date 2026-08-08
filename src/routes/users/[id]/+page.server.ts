@@ -14,7 +14,6 @@ export const load: PageServerLoad = async ({ params }) => {
 			id: users.id,
 			name: users.name,
 			initials: users.initials,
-			email: users.email,
 			role: users.role,
 			category: users.category,
 			standardSlots: users.standardSlots,
@@ -82,7 +81,6 @@ export const actions: Actions = {
 				.set({
 					name: values.name,
 					initials: values.initials,
-					email: values.email,
 					role: values.role,
 					category: values.category,
 					standardSlots: JSON.stringify(values.standardSlots),
@@ -95,7 +93,7 @@ export const actions: Actions = {
 				.where(eq(users.id, params.id));
 		} catch (err) {
 			if (err instanceof Error && err.message.includes('UNIQUE constraint')) {
-				return fail(400, { message: 'A user with that email address already exists.', values });
+				return fail(400, { message: 'A user with those initials already exists.', values });
 			}
 			throw err;
 		}

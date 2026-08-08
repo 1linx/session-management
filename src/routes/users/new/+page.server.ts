@@ -21,7 +21,6 @@ export const actions: Actions = {
 			await db.insert(users).values({
 				name: values.name,
 				initials: values.initials,
-				email: values.email,
 				role: values.role,
 				category: values.category,
 				standardSlots: JSON.stringify(values.standardSlots),
@@ -33,7 +32,7 @@ export const actions: Actions = {
 			});
 		} catch (error) {
 			if (error instanceof Error && error.message.includes('UNIQUE constraint')) {
-				return fail(400, { message: 'A user with that email address already exists.', values });
+				return fail(400, { message: 'A user with those initials already exists.', values });
 			}
 			throw error;
 		}

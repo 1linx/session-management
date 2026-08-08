@@ -39,7 +39,6 @@ export async function createSession(userId: string): Promise<{ token: string; ex
 
 export type SessionUser = {
 	id: string;
-	email: string;
 	name: string;
 	initials: string;
 	role: string;
@@ -52,7 +51,6 @@ export async function validateSession(token: string): Promise<SessionUser | null
 			session: authSessions,
 			user: {
 				id: users.id,
-				email: users.email,
 				name: users.name,
 				initials: users.initials,
 				role: users.role
