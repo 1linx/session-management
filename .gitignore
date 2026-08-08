@@ -45,3 +45,6 @@ INSTRUCTIONS.md
 
 # Deployment notes (kept locally, not part of the repo)
 DEPLOYMENT.md
+
+# Per-server PM2 config (contains the real domain)
+ecosystem.config.cjs
