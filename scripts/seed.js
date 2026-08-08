@@ -108,7 +108,7 @@ const seedAll = db.transaction(() => {
 		for (let d = 1; d <= 5; d++) {
 			['AM', 'PM'].forEach((period, pi) => {
 				const cell = STATUS[sessions[(d - 1) * 2 + pi]];
-				insertEntry.run(randomUUID(), userId, weekStart, d, period, cell.status, cell.location, cell.duty, now);
+				insertEntry.run(randomUUID(), userId, weekStart, d, period, cell.status, cell.location, now);
 			});
 		}
 	});
