@@ -2,7 +2,7 @@
 
 A rota / working-hours management system for a small team (Doctors and ANPs),
 built to administer the sessions staff are required to work to meet health
-board standards. See [INSTRUCTIONS.md](INSTRUCTIONS.md) for the original brief.
+board standards.
 
 ## Stack
 
