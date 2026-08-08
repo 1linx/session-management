@@ -4,16 +4,22 @@
 	import {
 		ALL_SLOTS,
 		CELL_OPTIONS,
-		DEFAULT_LOCATION,
+		CELL_OPTION_GROUPS,
 		NOT_WORKING,
 		PERIODS,
 		WEEKDAYS,
+		categoryLabel,
 		cellLabel,
 		decodeCell,
 		locationLabel,
+		roleChip,
 		slotKey
 	} from '$lib/constants';
 	import { addWeeks, dayDateLabel, weekLabel } from '$lib/dates';
+	import { validateWeek, slotHasErrors } from '$lib/rules/validate';
+	import { autoFixWeek } from '$lib/rules/autofix';
+	import { encodeCell } from '$lib/constants';
+	import type { WeekGrid } from '$lib/rules/types';
 
 	let { data, form } = $props();
 
@@ -28,15 +34,15 @@
 		PERIODS.map((period) => ({
 			day,
 			period,
+			slot: slotKey(day.value, period.value),
 			label: `${day.label} ${period.label}`
 		}))
 	);
 
 	// Editable state per cell, keyed "<userId>|<weekday>:<period>". Values are
 	// encoded cell keys ("working:ratho:duty"). Initialised during render so
-	// the server-rendered page already shows real values (no flash of
-	// "Not working"), then rebuilt whenever server data changes (week
-	// navigation, save round-trips, realtime refreshes).
+	// the server-rendered page already shows real values, then rebuilt
+	// whenever server data changes.
 	function buildCellValues(): Record<string, string> {
 		const next: Record<string, string> = {};
 		for (const user of data.rotaUsers) {
@@ -61,12 +67,56 @@
 		)
 	);
 
-	// Navigating to another week discards unsaved edits — check first.
 	beforeNavigate((navigation) => {
 		if (dirty && !confirm('You have unsaved changes on this week. Discard them?')) {
 			navigation.cancel();
 		}
 	});
+
+	// --- Live rule validation (recomputes as cells are edited) ---
+	const staffForRules = $derived(
+		data.rotaUsers.map((u) => ({
+			id: u.id,
+			initials: u.initials,
+			category: u.category,
+			canWorkRatho: u.canWorkRatho
+		}))
+	);
+
+	function currentGrid(): WeekGrid {
+		const grid: WeekGrid = {};
+		for (const user of data.rotaUsers) {
+			grid[user.id] = {};
+			for (const slot of ALL_SLOTS) {
+				grid[user.id][slot] = decodeCell(cellValues[`${user.id}|${slot}`] ?? 'not_working') ?? {
+					...NOT_WORKING
+				};
+			}
+		}
+		return grid;
+	}
+
+	const problems = $derived.by(() => validateWeek(staffForRules, currentGrid(), data.ruleSettings));
+	const problemSlots = $derived(rows.filter((row) => (problems[row.slot] ?? []).length > 0));
+
+	// --- Auto fix: runs in the browser on the grid as shown (including any
+	// unsaved edits). Applies results as unsaved edits, so the normal
+	// "Unsaved changes — press Save" flow takes over for review + persist.
+	let autofixChanges = $state<string[] | null>(null);
+	$effect(() => {
+		// A new week's data invalidates any previous auto-fix report.
+		void data.week;
+		autofixChanges = null;
+	});
+
+	function runAutoFix() {
+		const { changes } = autoFixWeek(staffForRules, currentGrid(), data.ruleSettings);
+		for (const change of changes) {
+			cellValues[`${change.userId}|${change.slot}`] = encodeCell(change.to);
+		}
+		const slotLabel = (slot: string) => rows.find((r) => r.slot === slot)?.label ?? slot;
+		autofixChanges = changes.map((c) => `${c.initials}, ${slotLabel(c.slot)}: ${c.reason}`);
+	}
 
 	// --- Status picker dialog ---
 	let dialog = $state<HTMLDialogElement>();
@@ -74,7 +124,7 @@
 
 	function openPicker(user: { id: string; initials: string }, row: (typeof rows)[number]) {
 		picker = {
-			cellKey: `${user.id}|${slotKey(row.day.value, row.period.value)}`,
+			cellKey: `${user.id}|${row.slot}`,
 			title: `${user.initials} — ${row.label}`
 		};
 		dialog?.showModal();
@@ -87,7 +137,9 @@
 
 	function classesFor(key: string): string {
 		const cell = decodeCell(key);
-		if (!cell || cell.status !== 'working') return 'bg-white';
+		if (!cell) return 'bg-white';
+		if (cell.status === 'sick') return 'bg-coral';
+		if (cell.status !== 'working') return 'bg-white';
 		return cell.location === 'ratho' ? 'bg-sky' : 'bg-mint';
 	}
 </script>
@@ -96,11 +148,13 @@
 	{@const cell = decodeCell(key) ?? NOT_WORKING}
 	{#if cell.status === 'working'}
 		<span class="font-bold">{locationLabel(cell.location)}</span>
-		{#if cell.duty}
+		{#if cell.role}
 			<span class="ml-1 inline-block bg-ink px-1.5 py-0.5 align-middle text-[10px] font-bold tracking-widest text-white uppercase">
-				Duty
+				{roleChip(cell.role)}
 			</span>
 		{/if}
+	{:else if cell.status === 'sick'}
+		<span class="font-bold">Off sick</span>
 	{:else}
 		<span class="text-neutral-700">Not working</span>
 	{/if}
@@ -151,6 +205,20 @@
 		<span class="inline-block border-2 border-ink bg-mint px-3 py-1 font-bold">
 			Filled in from standard availability — remember to Save any further changes.
 		</span>
+	{:else if autofixChanges !== null && autofixChanges.length === 0}
+		<span class="inline-block border-2 border-ink bg-accent px-3 py-1 font-bold">
+			Auto fix found nothing it can change — the remaining issues need staff who aren't
+			rostered, or manual changes.
+		</span>
+	{:else if autofixChanges !== null && !dirty}
+		<span class="inline-block border-2 border-ink bg-mint px-3 py-1 font-bold">
+			Auto fix applied and saved.
+		</span>
+	{:else if autofixChanges !== null}
+		<span class="inline-block border-2 border-ink bg-accent px-3 py-1 font-bold">
+			Auto fix changed {autofixChanges.length}
+			session{autofixChanges.length === 1 ? '' : 's'} — review below, then press Save.
+		</span>
 	{:else if form?.message}
 		<span class="inline-block border-2 border-ink bg-coral px-3 py-1 font-bold">
 			{form.message}
@@ -190,7 +258,8 @@
 		<table class="w-full border-collapse text-sm">
 			<caption class="border-b-2 border-ink bg-paper px-3 py-2 text-left font-bold">
 				Sessions for all staff. AM is 8am–1pm, PM is 1pm–6pm. Greyed cells are outside that
-				person's standard sessions but can still be set.
+				person's standard sessions but can still be set. Rows outlined in red break a staffing
+				rule — details under the table.
 			</caption>
 			<thead>
 				<tr>
@@ -200,27 +269,34 @@
 					{#each data.rotaUsers as user (user.id)}
 						<th scope="col" class="border-2 border-ink bg-accent px-3 py-2 text-center">
 							<span class="block text-base font-black">{user.initials}</span>
-							<span class="block text-xs font-bold uppercase">
-								{user.category === 'anp' ? 'ANP' : 'Doctor'}
-							</span>
+							<span class="block text-xs font-bold uppercase">{categoryLabel(user.category)}</span>
 						</th>
 					{/each}
 				</tr>
 			</thead>
 			<tbody>
 				{#each rows as row (row.label)}
-					<tr>
-						<th scope="row" class="border-2 border-ink bg-paper px-3 py-2 text-left whitespace-nowrap">
+					{@const hasErrors = slotHasErrors(problems, row.slot)}
+					<tr class={hasErrors ? 'rule-fail' : ''}>
+						<th
+							scope="row"
+							class="border-2 border-ink px-3 py-2 text-left whitespace-nowrap {hasErrors
+								? 'bg-coral'
+								: 'bg-paper'}"
+						>
 							{row.label}
+							{#if hasErrors}
+								<span class="ml-1 font-black" aria-hidden="true">⚠</span>
+								<span class="sr-only">— staffing rules not met, see issues below the table</span>
+							{/if}
 							<span class="block text-xs font-normal">
 								{dayDateLabel(data.week, row.day.value)} · {row.period.times}
 							</span>
 						</th>
 						{#each data.rotaUsers as user (user.id)}
-							{@const slot = slotKey(row.day.value, row.period.value)}
-							{@const isStandard = user.workingSlots.includes(slot)}
-							{@const key = cellValues[`${user.id}|${slot}`] ?? 'not_working'}
-							{@const isOff = (decodeCell(key) ?? NOT_WORKING).status !== 'working'}
+							{@const isStandard = row.slot in user.standardSlots}
+							{@const key = cellValues[`${user.id}|${row.slot}`] ?? 'not_working'}
+							{@const isOff = (decodeCell(key) ?? NOT_WORKING).status === 'not_working'}
 							<td
 								class="border-2 border-ink p-0 text-center has-[button:hover]:shadow-[inset_0_0_0_3px_var(--color-ink)] {isOff &&
 								!isStandard
@@ -236,9 +312,6 @@
 										onclick={() => openPicker(user, row)}
 									>
 										{@render cellContent(key)}
-										{#if !isStandard && isOff}
-											<span class="sr-only">(not a standard session)</span>
-										{/if}
 									</button>
 								{:else}
 									<span class="block px-2 py-2.5">
@@ -257,7 +330,7 @@
 	</div>
 
 	{#if isAdmin}
-		<div class="mt-4 flex items-center gap-4">
+		<div class="mt-4 flex flex-wrap items-center gap-4">
 			<button
 				class="nb-btn disabled:cursor-not-allowed disabled:bg-neutral-200 disabled:text-neutral-600 disabled:shadow-none"
 				disabled={saving || !dirty}
@@ -271,8 +344,56 @@
 	{/if}
 </form>
 
-{#if isAdmin && data.weekIsEmpty}
+{#if isAdmin && problemSlots.length > 0}
 	<div class="mt-4">
+		<button type="button" class="nb-btn bg-coral" onclick={runAutoFix}>
+			Auto fix staffing issues
+		</button>
+		<span class="ml-2 text-sm">
+			Best-guess reassignment of people already working. Changes appear on the grid as
+			unsaved edits for you to review — nothing is stored until you press Save.
+		</span>
+	</div>
+{/if}
+
+{#if (autofixChanges?.length ?? 0) > 0}
+	<section class="nb-card mt-4 max-w-3xl" aria-label="Auto fix changes">
+		<h2 class="mb-2 font-bold uppercase">Auto fix changes {dirty ? '(unsaved)' : ''}</h2>
+		<ul class="list-inside list-disc text-sm">
+			{#each autofixChanges ?? [] as change (change)}
+				<li>{change}</li>
+			{/each}
+		</ul>
+	</section>
+{/if}
+
+{#if problemSlots.length > 0}
+	<section class="mt-6 max-w-3xl border-2 border-ink bg-white p-4 shadow-brutal" aria-label="Staffing issues">
+		<h2 class="mb-2 font-bold uppercase">Staffing issues this week</h2>
+		<dl class="flex flex-col gap-3 text-sm">
+			{#each problemSlots as row (row.slot)}
+				<div>
+					<dt class="font-bold">{row.label}</dt>
+					{#each problems[row.slot] ?? [] as problem (problem.message)}
+						<dd class="ml-4">
+							{#if problem.severity === 'error'}
+								<span class="mr-1 inline-block bg-red-600 px-1 text-[10px] font-bold tracking-widest text-white uppercase">Rule</span>
+							{:else}
+								<span class="mr-1 inline-block bg-ink px-1 text-[10px] font-bold tracking-widest text-white uppercase">Note</span>
+							{/if}
+							{problem.message}
+						</dd>
+					{/each}
+				</div>
+			{/each}
+		</dl>
+	</section>
+{:else}
+	<p class="mt-6 text-sm font-bold" role="status">✓ All staffing rules met this week.</p>
+{/if}
+
+{#if isAdmin && data.weekIsEmpty}
+	<div class="mt-6">
 		<p class="mb-2 text-sm font-bold">This week has no rota yet. Start from:</p>
 		<div class="flex flex-wrap gap-3">
 			<form method="POST" action={`?week=${data.week}&/useDefaults`} use:enhance>
@@ -287,8 +408,8 @@
 			</form>
 		</div>
 		<p class="mt-2 max-w-prose text-sm">
-			Default values mark everyone as Working ({locationLabel(DEFAULT_LOCATION)}) on the sessions
-			they normally work, from their user settings.
+			Default values mark everyone as Working at their usual practice on the sessions they
+			normally work, from their user settings.
 		</p>
 	</div>
 {/if}
@@ -298,10 +419,14 @@
 	<ul class="flex flex-wrap items-center gap-3 text-sm">
 		<li><span class="inline-block border-2 border-ink bg-mint px-2 py-0.5 font-bold">East Calder</span></li>
 		<li><span class="inline-block border-2 border-ink bg-sky px-2 py-0.5 font-bold">Ratho</span></li>
+		<li><span class="inline-block border-2 border-ink bg-coral px-2 py-0.5 font-bold">Off sick</span></li>
 		<li>
 			<span class="inline-block border-2 border-ink bg-white px-2 py-0.5 font-bold">
 				<span class="mr-1 inline-block bg-ink px-1.5 py-0.5 align-middle text-[10px] font-bold tracking-widest text-white uppercase">Duty</span>
-				On duty
+				Duty doctor
+				<span class="mx-1 inline-block bg-ink px-1.5 py-0.5 align-middle text-[10px] font-bold tracking-widest text-white uppercase">Duty team</span>
+				<span class="mr-1 inline-block bg-ink px-1.5 py-0.5 align-middle text-[10px] font-bold tracking-widest text-white uppercase">Visits</span>
+				House visits
 			</span>
 		</li>
 		<li><span class="inline-block border-2 border-ink bg-white px-2 py-0.5">Not working</span></li>
@@ -331,31 +456,38 @@
 				✕
 			</button>
 		</div>
-		<ul class="flex flex-col gap-3 p-4">
-			{#each CELL_OPTIONS as option (option.key)}
-				<li>
-					<button
-						type="button"
-						aria-pressed={current === option.key}
-						class="flex w-full cursor-pointer items-center justify-between border-2 border-ink px-3 py-2 text-left font-bold shadow-brutal-sm hover:-translate-x-0.5 hover:-translate-y-0.5 {classesFor(
-							option.key
-						)}"
-						onclick={() => choose(option.key)}
-					>
-						<span>
-							{option.pickerLabel.replace(' — Duty', '')}
-							{#if option.value.duty}
-								<span class="ml-1 inline-block bg-ink px-1.5 py-0.5 align-middle text-[10px] font-bold tracking-widest text-white uppercase">
-									Duty
-								</span>
-							{/if}
-						</span>
-						{#if current === option.key}
-							<span class="text-xs uppercase">✓ Current</span>
-						{/if}
-					</button>
-				</li>
+		<div class="flex flex-col gap-4 p-4">
+			{#each CELL_OPTION_GROUPS as group (group)}
+				<div>
+					<h3 class="mb-2 text-xs font-bold tracking-widest uppercase">{group}</h3>
+					<ul class="flex flex-col gap-2.5">
+						{#each CELL_OPTIONS.filter((o) => o.group === group) as option (option.key)}
+							<li>
+								<button
+									type="button"
+									aria-pressed={current === option.key}
+									class="flex w-full cursor-pointer items-center justify-between border-2 border-ink px-3 py-2 text-left font-bold shadow-brutal-sm hover:-translate-x-0.5 hover:-translate-y-0.5 {classesFor(
+										option.key
+									)}"
+									onclick={() => choose(option.key)}
+								>
+									<span>
+										{option.pickerLabel}
+										{#if option.value.role}
+											<span class="ml-1 inline-block bg-ink px-1.5 py-0.5 align-middle text-[10px] font-bold tracking-widest text-white uppercase">
+												{roleChip(option.value.role)}
+											</span>
+										{/if}
+									</span>
+									{#if current === option.key}
+										<span class="text-xs uppercase">✓ Current</span>
+									{/if}
+								</button>
+							</li>
+						{/each}
+					</ul>
+				</div>
 			{/each}
-		</ul>
+		</div>
 	{/if}
 </dialog>

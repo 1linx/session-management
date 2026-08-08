@@ -1,26 +1,22 @@
 <script lang="ts">
-	import { ALL_SLOTS, USER_CATEGORIES, USER_ROLES, WEEKDAYS, slotKey } from '$lib/constants';
+	import { USER_ROLES, categoryLabel, locationLabel } from '$lib/constants';
 
 	let { data } = $props();
 
-	function categoryLabel(value: string): string {
-		return USER_CATEGORIES.find((c) => c.value === value)?.label ?? value;
-	}
 	function roleLabel(value: string): string {
 		return USER_ROLES.find((r) => r.value === value)?.label ?? value;
 	}
-	function slotsLabel(slots: string[]): string {
-		if (slots.length === ALL_SLOTS.length) return 'Mon–Fri, all day';
-		if (slots.length === 0) return 'None';
-		const parts: string[] = [];
-		for (const day of WEEKDAYS) {
-			const am = slots.includes(slotKey(day.value, 'AM'));
-			const pm = slots.includes(slotKey(day.value, 'PM'));
-			if (!am && !pm) continue;
-			const abbrev = day.label.slice(0, 3);
-			parts.push(am && pm ? abbrev : `${abbrev} ${am ? 'AM' : 'PM'}`);
+	function slotsLabel(slots: Record<string, string>): string {
+		const entries = Object.values(slots);
+		if (entries.length === 0) return 'None';
+		const counts = new Map<string, number>();
+		for (const practice of entries) {
+			counts.set(practice, (counts.get(practice) ?? 0) + 1);
 		}
-		return parts.join(', ');
+		const parts = [...counts.entries()].map(
+			([practice, n]) => `${n} ${locationLabel(practice)}`
+		);
+		return `${entries.length} session${entries.length === 1 ? '' : 's'} (${parts.join(', ')})`;
 	}
 </script>
 
@@ -55,7 +51,9 @@
 					<td>{user.email}</td>
 					<td>{categoryLabel(user.category)}</td>
 					<td>{roleLabel(user.role)}</td>
-					<td>{slotsLabel(user.workingSlots)}</td>
+					<td>
+						{slotsLabel(user.standardSlots)}{user.canWorkRatho ? ' · can cover Ratho' : ''}
+					</td>
 					<td>{user.displayOrder}</td>
 					<td>
 						{user.active ? 'Active' : 'Inactive'}{user.onRota ? '' : ', not on rota'}

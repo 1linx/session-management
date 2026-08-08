@@ -1,10 +1,10 @@
 /**
  * Shared domain constants (safe for client and server).
  * These are the single source of truth for the values stored as plain text
- * in the database — add new statuses/categories here.
+ * in the database — add new statuses, locations, roles or categories here.
  */
 
-/** Places a working session can happen. First entry is the default. */
+/** The two medical practices. First entry is the default. */
 export const LOCATIONS = [
 	{ value: 'east_calder', label: 'East Calder' },
 	{ value: 'ratho', label: 'Ratho' }
@@ -18,79 +18,133 @@ export function locationLabel(value: string | null): string {
 	return LOCATIONS.find((l) => l.value === value)?.label ?? (value ?? '');
 }
 
+export function isLocation(value: string): value is LocationValue {
+	return LOCATIONS.some((l) => l.value === value);
+}
+
+/**
+ * Roles a working session can carry. Only one role per session.
+ * duty        — the designated duty doctor (GPs only; one per practice/session)
+ * duty_team   — East Calder duty team member (ANPs first, then GPs)
+ * house_visits — East Calder house visits, 12–1pm and 2–3pm (GP/trainee only)
+ */
+export const SESSION_ROLES = [
+	{ value: 'duty', label: 'Duty doctor', chip: 'Duty' },
+	{ value: 'duty_team', label: 'Duty team', chip: 'Duty team' },
+	{ value: 'house_visits', label: 'House visits', chip: 'Visits' }
+] as const;
+
+export type SessionRole = (typeof SESSION_ROLES)[number]['value'];
+
+export function roleChip(role: string | null): string {
+	return SESSION_ROLES.find((r) => r.value === role)?.chip ?? '';
+}
+
 /**
  * The full state of one session cell: a status plus its sub-choices.
- * Add statuses, locations or flags here — the picker, save validation
- * and export all derive from these definitions.
+ * The picker, save validation, rules engine and export all derive from this.
  */
 export type CellValue = {
-	status: 'working' | 'not_working';
+	status: 'working' | 'not_working' | 'sick';
 	location: LocationValue | null;
-	duty: boolean;
+	role: SessionRole | null;
 };
 
-export const NOT_WORKING: CellValue = { status: 'not_working', location: null, duty: false };
+export const NOT_WORKING: CellValue = { status: 'not_working', location: null, role: null };
+export const OFF_SICK: CellValue = { status: 'sick', location: null, role: null };
 
-/** Wire format for a cell, e.g. "working:ratho:duty" or "not_working". */
+/** Wire format for a cell, e.g. "working:ratho:duty", "not_working", "sick". */
 export function encodeCell(cell: CellValue): string {
+	if (cell.status === 'sick') return 'sick';
 	if (cell.status !== 'working') return 'not_working';
-	return `working:${cell.location ?? DEFAULT_LOCATION}${cell.duty ? ':duty' : ''}`;
+	return `working:${cell.location ?? DEFAULT_LOCATION}${cell.role ? `:${cell.role}` : ''}`;
 }
 
 /** Parse and validate a wire-format cell key. Returns null for anything invalid. */
 export function decodeCell(key: string): CellValue | null {
 	if (key === 'not_working') return { ...NOT_WORKING };
-	const [status, location, ...flags] = key.split(':');
-	if (status !== 'working') return null;
-	if (!LOCATIONS.some((l) => l.value === location)) return null;
-	if (flags.length === 0) return { status: 'working', location: location as LocationValue, duty: false };
-	if (flags.length === 1 && flags[0] === 'duty') {
-		return { status: 'working', location: location as LocationValue, duty: true };
+	if (key === 'sick') return { ...OFF_SICK };
+	const [status, location, ...rest] = key.split(':');
+	if (status !== 'working' || !location || !isLocation(location)) return null;
+	if (rest.length === 0) return { status: 'working', location, role: null };
+	if (rest.length === 1 && SESSION_ROLES.some((r) => r.value === rest[0])) {
+		return { status: 'working', location, role: rest[0] as SessionRole };
 	}
 	return null;
 }
 
 /**
  * Human label, matching the established spreadsheet wording: the default
- * location stays implicit ("Working"), everything else is parenthesised —
- * "Working (Ratho)", "Working (Duty)", "Working (Ratho, Duty)".
+ * location stays implicit ("Working"), everything else parenthesised —
+ * "Working (Ratho)", "Working (Duty)", "Working (Ratho, Duty)",
+ * "Working (Duty team)", "Working (House visits)", "Off sick".
  */
 export function cellLabel(cell: CellValue): string {
+	if (cell.status === 'sick') return 'Off sick';
 	if (cell.status !== 'working') return 'Not working';
 	const extras = [
 		cell.location && cell.location !== DEFAULT_LOCATION ? locationLabel(cell.location) : null,
-		cell.duty ? 'Duty' : null
+		cell.role ? roleChip(cell.role) : null
 	].filter(Boolean);
 	return extras.length ? `Working (${extras.join(', ')})` : 'Working';
 }
 
-/** Every pickable cell state, in picker display order. */
-export const CELL_OPTIONS: { key: string; value: CellValue; label: string; pickerLabel: string }[] =
-	[
-		...LOCATIONS.flatMap((location) => [
-			`working:${location.value}`,
-			`working:${location.value}:duty`
-		]),
-		'not_working'
-	].map((key) => {
-		const value = decodeCell(key)!;
-		return {
-			key,
-			value,
-			label: cellLabel(value),
-			pickerLabel:
-				value.status !== 'working'
+export type CellOption = {
+	key: string;
+	value: CellValue;
+	label: string;
+	pickerLabel: string;
+	group: string;
+};
+
+/**
+ * Every pickable cell state, grouped for the picker. Duty team and house
+ * visits are East Calder concepts, so they are only offered there.
+ */
+export const CELL_OPTIONS: CellOption[] = [
+	'working:east_calder',
+	'working:east_calder:duty',
+	'working:east_calder:duty_team',
+	'working:east_calder:house_visits',
+	'working:ratho',
+	'working:ratho:duty',
+	'not_working',
+	'sick'
+].map((key) => {
+	const value = decodeCell(key)!;
+	return {
+		key,
+		value,
+		label: cellLabel(value),
+		pickerLabel:
+			value.status === 'sick'
+				? 'Off sick'
+				: value.status !== 'working'
 					? 'Not working'
-					: `${locationLabel(value.location)}${value.duty ? ' — Duty' : ''}`
-		};
-	});
+					: locationLabel(value.location),
+		group:
+			value.status === 'working' ? locationLabel(value.location) : 'Not working'
+	};
+});
+
+export const CELL_OPTION_GROUPS: string[] = [...new Set(CELL_OPTIONS.map((o) => o.group))];
 
 export const USER_CATEGORIES = [
 	{ value: 'doctor', label: 'Doctor' },
+	{ value: 'gp_trainee', label: 'GP Trainee' },
 	{ value: 'anp', label: 'ANP' }
 ] as const;
 
 export type UserCategory = (typeof USER_CATEGORIES)[number]['value'];
+
+export function categoryLabel(value: string): string {
+	return USER_CATEGORIES.find((c) => c.value === value)?.label ?? value;
+}
+
+/** GPs and GP trainees — the people who can run clinics and house visits. */
+export function isClinician(category: string): boolean {
+	return category === 'doctor' || category === 'gp_trainee';
+}
 
 export const USER_ROLES = [
 	{ value: 'admin', label: 'Admin' },
@@ -116,7 +170,7 @@ export const PERIODS = [
 
 export type Period = (typeof PERIODS)[number]['value'];
 
-/** Canonical key for a half-day slot, as stored in `users.working_slots`. */
+/** Canonical key for a half-day slot, e.g. "1:AM". */
 export function slotKey(weekday: number, period: string): string {
 	return `${weekday}:${period}`;
 }
@@ -125,3 +179,10 @@ export function slotKey(weekday: number, period: string): string {
 export const ALL_SLOTS: string[] = WEEKDAYS.flatMap((day) =>
 	PERIODS.map((period) => slotKey(day.value, period.value))
 );
+
+/**
+ * A user's standard availability: slot → the practice they normally work at.
+ * Slots absent from the map are not normally worked. Purely a default for
+ * populating new weeks — any session can still be set manually.
+ */
+export type StandardSlots = Partial<Record<string, LocationValue>>;

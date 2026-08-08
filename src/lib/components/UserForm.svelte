@@ -1,6 +1,14 @@
 <script lang="ts">
 	import { enhance } from '$app/forms';
-	import { ALL_SLOTS, PERIODS, USER_CATEGORIES, USER_ROLES, WEEKDAYS, slotKey } from '$lib/constants';
+	import {
+		LOCATIONS,
+		PERIODS,
+		USER_CATEGORIES,
+		USER_ROLES,
+		WEEKDAYS,
+		slotKey,
+		type StandardSlots
+	} from '$lib/constants';
 
 	type Values = {
 		name?: string;
@@ -8,7 +16,8 @@
 		email?: string;
 		role?: string;
 		category?: string;
-		workingSlots?: string[];
+		standardSlots?: StandardSlots;
+		canWorkRatho?: boolean;
 		displayOrder?: number;
 		onRota?: boolean;
 		active?: boolean;
@@ -18,16 +27,18 @@
 		values = {},
 		errorMessage = undefined,
 		isNew = false,
-		submitLabel
+		submitLabel,
+		action = ''
 	}: {
 		values?: Values;
 		errorMessage?: string;
 		isNew?: boolean;
 		submitLabel: string;
+		action?: string;
 	} = $props();
 </script>
 
-<form method="POST" use:enhance class="nb-card flex max-w-2xl flex-col gap-5">
+<form method="POST" {action} use:enhance class="nb-card flex max-w-2xl flex-col gap-5">
 	{#if errorMessage}
 		<p role="alert" class="border-2 border-ink bg-coral px-3 py-2 font-bold">{errorMessage}</p>
 	{/if}
@@ -81,9 +92,9 @@
 	<fieldset class="border-2 border-ink p-4 shadow-brutal-sm">
 		<legend class="px-2 text-sm font-bold uppercase">Standard sessions</legend>
 		<p class="mb-3 text-sm">
-			Tick the half-day sessions this person normally works — mornings only, afternoons only, or
-			any mix. “Use default values” on an empty week marks these as Working; any session can
-			still be set manually on the rota.
+			For each half-day session, pick the practice this person normally works at (or “—” if
+			they don't). “Use default values” on an empty week fills the rota from this; any session
+			can still be set manually.
 		</p>
 		<table class="border-collapse">
 			<thead>
@@ -100,25 +111,40 @@
 			<tbody>
 				{#each WEEKDAYS as day (day.value)}
 					<tr>
-						<th scope="row" class="pr-4 py-1 text-left font-bold">{day.label}</th>
+						<th scope="row" class="py-1 pr-4 text-left font-bold">{day.label}</th>
 						{#each PERIODS as period (period.value)}
+							{@const slot = slotKey(day.value, period.value)}
 							<td class="px-3 py-1 text-center">
-								<input
-									type="checkbox"
-									name="workingSlots"
-									value={slotKey(day.value, period.value)}
-									checked={(values.workingSlots ?? ALL_SLOTS).includes(
-										slotKey(day.value, period.value)
-									)}
-									aria-label={`${day.label} ${period.label}`}
-									class="size-5 accent-ink"
-								/>
+								<select
+									name={`slot:${slot}`}
+									aria-label={`${day.label} ${period.label} practice`}
+									class="border-2 border-ink bg-white px-2 py-1"
+								>
+									<option value="none" selected={!values.standardSlots?.[slot]}>—</option>
+									{#each LOCATIONS as location (location.value)}
+										<option
+											value={location.value}
+											selected={values.standardSlots?.[slot] === location.value}
+										>
+											{location.label}
+										</option>
+									{/each}
+								</select>
 							</td>
 						{/each}
 					</tr>
 				{/each}
 			</tbody>
 		</table>
+		<label class="mt-4 flex items-center gap-2 font-bold">
+			<input
+				type="checkbox"
+				name="canWorkRatho"
+				checked={values.canWorkRatho ?? false}
+				class="size-5 accent-ink"
+			/>
+			Can be sent to Ratho if cover is required (used by Auto-fix)
+		</label>
 	</fieldset>
 
 	<div class="grid gap-5 sm:grid-cols-2">

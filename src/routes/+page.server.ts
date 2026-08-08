@@ -4,13 +4,16 @@ import { db } from '$lib/server/db';
 import { scheduleEntries, users } from '$lib/server/db/schema';
 import {
 	ALL_SLOTS,
-	DEFAULT_LOCATION,
 	decodeCell,
 	encodeCell,
-	type LocationValue
+	type CellValue,
+	type LocationValue,
+	type SessionRole,
+	type StandardSlots
 } from '$lib/constants';
 import { addWeeks, currentWeekStart, isISODate, mondayOf, resolveWeek } from '$lib/dates';
 import { broadcastChange } from '$lib/server/realtime';
+import { getRuleSettings } from '$lib/server/settings';
 import type { Actions, PageServerLoad } from './$types';
 
 async function loadRotaUsers() {
@@ -20,7 +23,8 @@ async function loadRotaUsers() {
 			name: users.name,
 			initials: users.initials,
 			category: users.category,
-			workingSlots: users.workingSlots
+			standardSlots: users.standardSlots,
+			canWorkRatho: users.canWorkRatho
 		})
 		.from(users)
 		.where(and(eq(users.active, true), eq(users.onRota, true)))
@@ -42,6 +46,18 @@ async function entriesForWeek(week: string, userIds: string[]) {
 		.where(and(eq(scheduleEntries.weekStart, week), inArray(scheduleEntries.userId, userIds)));
 }
 
+function toCellValue(entry: {
+	status: string;
+	location: string | null;
+	role: string | null;
+}): CellValue {
+	return {
+		status: entry.status === 'working' ? 'working' : entry.status === 'sick' ? 'sick' : 'not_working',
+		location: (entry.location as LocationValue | null) ?? null,
+		role: (entry.role as SessionRole | null) ?? null
+	};
+}
+
 export const load: PageServerLoad = async ({ url }) => {
 	const week = resolveWeek(url.searchParams.get('week'));
 	const rotaUsers = await loadRotaUsers();
@@ -53,21 +69,39 @@ export const load: PageServerLoad = async ({ url }) => {
 	// grid[userId]["<weekday>:<period>"] = encoded cell key (e.g. "working:ratho:duty")
 	const grid: Record<string, Record<string, string>> = {};
 	for (const entry of entries) {
-		(grid[entry.userId] ??= {})[`${entry.weekday}:${entry.period}`] = encodeCell({
-			status: entry.status === 'working' ? 'working' : 'not_working',
-			location: (entry.location as LocationValue | null) ?? null,
-			duty: entry.duty
-		});
+		(grid[entry.userId] ??= {})[`${entry.weekday}:${entry.period}`] = encodeCell(
+			toCellValue(entry)
+		);
 	}
 
 	return {
-		rotaUsers: rotaUsers.map((u) => ({ ...u, workingSlots: JSON.parse(u.workingSlots) as string[] })),
+		rotaUsers: rotaUsers.map((u) => ({
+			...u,
+			standardSlots: JSON.parse(u.standardSlots) as StandardSlots
+		})),
 		grid,
 		week,
 		currentWeek: currentWeekStart(),
-		weekIsEmpty: entries.length === 0
+		weekIsEmpty: entries.length === 0,
+		ruleSettings: await getRuleSettings()
 	};
 };
+
+async function upsertCell(userId: string, week: string, weekday: number, period: string, cell: CellValue) {
+	const fields = { status: cell.status, location: cell.location, role: cell.role };
+	await db
+		.insert(scheduleEntries)
+		.values({ userId, weekStart: week, weekday, period, ...fields })
+		.onConflictDoUpdate({
+			target: [
+				scheduleEntries.userId,
+				scheduleEntries.weekStart,
+				scheduleEntries.weekday,
+				scheduleEntries.period
+			],
+			set: { ...fields, updatedAt: new Date() }
+		});
+}
 
 export const actions: Actions = {
 	save: async ({ request, locals }) => {
@@ -82,7 +116,6 @@ export const actions: Actions = {
 		const rotaUsers = await loadRotaUsers();
 
 		for (const user of rotaUsers) {
-			// Any slot can be scheduled — standard availability only drives defaults.
 			for (const slot of ALL_SLOTS) {
 				const [weekdayRaw, period] = slot.split(':');
 				const weekday = Number(weekdayRaw);
@@ -90,19 +123,7 @@ export const actions: Actions = {
 				if (typeof value !== 'string') continue;
 				const cell = decodeCell(value);
 				if (!cell) continue;
-				const fields = { status: cell.status, location: cell.location, duty: cell.duty };
-				await db
-					.insert(scheduleEntries)
-					.values({ userId: user.id, weekStart: week, weekday, period, ...fields })
-					.onConflictDoUpdate({
-						target: [
-							scheduleEntries.userId,
-							scheduleEntries.weekStart,
-							scheduleEntries.weekday,
-							scheduleEntries.period
-						],
-						set: { ...fields, updatedAt: new Date() }
-					});
+				await upsertCell(user.id, week, weekday, period, cell);
 			}
 		}
 
@@ -112,7 +133,7 @@ export const actions: Actions = {
 
 	/**
 	 * Populate an empty week from standard availability: every session each
-	 * person normally works becomes Working at the default location.
+	 * person normally works becomes Working at their usual practice.
 	 */
 	useDefaults: async ({ request, locals }) => {
 		if (locals.user?.role !== 'admin') {
@@ -135,18 +156,20 @@ export const actions: Actions = {
 		}
 
 		const values = rotaUsers.flatMap((user) =>
-			(JSON.parse(user.workingSlots) as string[]).map((slot) => {
-				const [weekdayRaw, period] = slot.split(':');
-				return {
-					userId: user.id,
-					weekStart: week,
-					weekday: Number(weekdayRaw),
-					period,
-					status: 'working',
-					location: DEFAULT_LOCATION,
-					duty: false
-				};
-			})
+			Object.entries(JSON.parse(user.standardSlots) as StandardSlots).map(
+				([slot, practice]) => {
+					const [weekdayRaw, period] = slot.split(':');
+					return {
+						userId: user.id,
+						weekStart: week,
+						weekday: Number(weekdayRaw),
+						period,
+						status: 'working',
+						location: practice ?? 'east_calder',
+						role: null
+					};
+				}
+			)
 		);
 		if (values.length === 0) {
 			return fail(400, { message: 'No one on the rota has any standard availability set.' });
@@ -190,7 +213,7 @@ export const actions: Actions = {
 				period: entry.period,
 				status: entry.status,
 				location: entry.location,
-				duty: entry.duty
+				role: entry.role
 			}))
 		);
 

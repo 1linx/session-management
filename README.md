@@ -29,15 +29,22 @@ deploying anywhere real.**
 
 ## Concepts
 
+- **Practices**: East Calder (default) and Ratho, both open Mon–Fri 8am–6pm.
 - **User type**: `admin` (edits the rota and manages users) or `viewer`
   (read-only). Everyone can see everyone's times — that's intentional.
-- **Category**: `doctor` or `anp` — the working-hours standard that applies.
+- **Category**: `doctor` (GP), `gp_trainee` or `anp`. GPs and trainees are
+  "clinicians" for staffing rules; only GPs can be the duty doctor.
   New categories: add to `USER_CATEGORIES` in [src/lib/constants.ts](src/lib/constants.ts).
-- **Standard sessions**: set per user by an admin as a Mon–Fri × AM/PM grid,
-  so someone can work mornings only, afternoons only, or any mix. These are
-  defaults, not restrictions — "Use default values" marks them as Working on
-  an empty week, but every cell on the rota can be set manually, and changing
-  someone's standard sessions never deletes what's already rostered.
+- **Standard sessions**: set per user by an admin as a Mon–Fri × AM/PM grid
+  of practices, so someone can be EC-only, Ratho-only, or split across both
+  on different sessions. These are defaults, not restrictions — "Use default
+  values" marks them as Working at their usual practice on an empty week,
+  but every cell on the rota can be set manually, and changing someone's
+  standard sessions never deletes what's already rostered. A separate
+  "can be sent to Ratho" flag tells Auto-fix who may be relocated.
+- **Session state**: Working (at a practice, optionally with a role: Duty
+  doctor, EC Duty team, EC House visits), Not working, or Off sick. Sick
+  sessions are totalled per person on the Absences page.
 - **Weeks**: the rota is managed week by week. The grid shows one week
   (identified by its Monday, `?week=YYYY-MM-DD`), defaulting to the current
   week in UK time, with previous/next navigation. Admins can populate an
@@ -56,12 +63,46 @@ deploying anywhere real.**
 - **Rota order / shown on rota**: admins control column order; admin-only
   accounts can be hidden from the rota entirely.
 
+## Staffing rules engine
+
+All allocation logic lives in [src/lib/rules/](src/lib/rules/) — deliberately
+pure (no database, no framework) because it will need the most fine-tuning.
+The rota page runs `validateWeek()` live in the browser as cells are edited;
+rows breaking a rule are outlined red with the reasons listed under the grid.
+
+Rules implemented (configurable on the Staffing rules page unless noted):
+
+1. Exactly one GP duty doctor per practice per session (always on).
+2. Minimum GPs/trainees on routine clinics, per practice.
+3. EC duty team minimum (error) and desirable (warning) per session;
+   ANPs fill the team before GPs.
+4. EC house-visit allocations per session, GPs/trainees only.
+5. Duty team / house visits flagged if placed at Ratho.
+
+**Auto-fix** (`autofix.ts`) runs in the browser on the grid as shown —
+including unsaved edits — and applies its corrections as **unsaved edits**
+for review; nothing persists until the admin presses Save. It strips invalid
+roles, promotes routine GPs to duty (choosing the lowest
+duty-per-sessions-worked ratio so duty spreads proportionately), relocates a
+`canWorkRatho` GP when Ratho lacks one (only if EC still meets its own
+rules), fills the duty team ANP-first, then house visits — never touching
+Not working/Off sick cells and never dropping anyone below the routine
+minimum. Every change is listed in the UI; what can't be fixed stays red,
+and navigating away discards the proposal like any other unsaved edit.
+
+Planned next (from the brief, not yet implemented): annual leave tracking
+with entitlement summaries, special-activity allocations (admin/minor
+surgery), and a cross-site auto-allocation history ("sub-rota") recording
+who was moved or given extra duty.
+
 ## Pages
 
 | Route | Access | Purpose |
 | --- | --- | --- |
-| `/` | all users | The weekly rota grid (editable for admins) |
-| `/users` | admin | Add/edit users, working days, order, roles |
+| `/` | all users | The weekly rota grid (editable for admins), rule warnings, Auto-fix |
+| `/absences` | all users | Sickness absence totals per staff member |
+| `/users` | admin | Add/edit users, standard sessions, order, roles |
+| `/settings` | admin | Staffing-rule requirements (minimums, duty team, house visits) |
 | `/export?week=` | all users | Download one week's rota as `rota-YYYY-MM-DD.xlsx` |
 | `/raw` | all users | Unprocessed view of the stored data |
 

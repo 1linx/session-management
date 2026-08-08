@@ -23,15 +23,14 @@ export const users = sqliteTable('users', {
 	/** 'doctor' | 'anp' — the working-hours category */
 	category: text('category').notNull().default('doctor'),
 	/**
-	 * The half-day sessions this person works at all, stored as a JSON
-	 * array of "<ISO weekday>:<period>" keys (1 = Monday … 5 = Friday),
-	 * e.g. '["1:AM","1:PM","2:AM"]' for Monday all day plus Tuesday
-	 * morning. Sessions can only be scheduled on these slots; all other
-	 * slots are always "Not working".
+	 * Standard availability: a JSON object mapping slot keys to the practice
+	 * normally worked there, e.g. '{"1:AM":"east_calder","2:AM":"ratho"}'.
+	 * Slots absent from the map are not normally worked. This is a default
+	 * for populating new weeks, never a restriction.
 	 */
-	workingSlots: text('working_slots')
-		.notNull()
-		.default('["1:AM","1:PM","2:AM","2:PM","3:AM","3:PM","4:AM","4:PM","5:AM","5:PM"]'),
+	standardSlots: text('working_slots').notNull().default('{}'),
+	/** Whether this person can be sent to Ratho when cover is needed. */
+	canWorkRatho: integer('can_work_ratho', { mode: 'boolean' }).notNull().default(false),
 	/** Column order on the rota and in the exported spreadsheet */
 	displayOrder: integer('display_order').notNull().default(0),
 	/** Whether this person appears as a column on the rota/spreadsheet
@@ -42,6 +41,12 @@ export const users = sqliteTable('users', {
 	createdAt: integer('created_at', { mode: 'timestamp' })
 		.notNull()
 		.$defaultFn(() => new Date())
+});
+
+/** App-wide configuration, one JSON document per key (e.g. 'rota_rules'). */
+export const settings = sqliteTable('settings', {
+	key: text('key').primaryKey(),
+	value: text('value').notNull()
 });
 
 /** Login sessions. `id` is the SHA-256 hash of the bearer token. */
@@ -74,12 +79,12 @@ export const scheduleEntries = sqliteTable(
 		weekday: integer('weekday').notNull(),
 		/** 'AM' (8am–1pm) | 'PM' (1pm–6pm) */
 		period: text('period').notNull(),
-		/** 'working' | 'not_working' — see $lib/constants.ts */
+		/** 'working' | 'not_working' | 'sick' — see $lib/constants.ts */
 		status: text('status').notNull().default('not_working'),
 		/** Where a working session happens, e.g. 'east_calder' | 'ratho'; null unless working */
 		location: text('location'),
-		/** Whether this working session carries the Duty flag */
-		duty: integer('duty', { mode: 'boolean' }).notNull().default(false),
+		/** Session role: 'duty' | 'duty_team' | 'house_visits' | null (routine) */
+		role: text('role'),
 		updatedAt: integer('updated_at', { mode: 'timestamp' })
 			.notNull()
 			.$defaultFn(() => new Date())

@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it } from 'vitest';
 import ExcelJS from 'exceljs';
 import { GET } from '../routes/export/+server';
 import { addWeeks, currentWeekStart } from '$lib/dates';
-import { createEntry, createUser, resetDb } from './helpers';
+import { createEntry, createUser, resetDb, slotsAt } from './helpers';
 
 type ExportEvent = Parameters<typeof GET>[0];
 
@@ -46,7 +46,7 @@ describe('xlsx export', () => {
 	});
 
 	it('writes status labels, defaulting unscheduled slots to Not working', async () => {
-		const user = await createUser({ initials: 'DR1', workingSlots: '["1:AM","1:PM","2:AM"]' });
+		const user = await createUser({ initials: 'DR1', standardSlots: slotsAt(['1:AM', '1:PM', '2:AM']) });
 		await createEntry(user.id, 1, 'AM');
 		await createEntry(user.id, 1, 'PM', { location: 'ratho' });
 		// 2:AM available but no entry saved.
@@ -59,16 +59,28 @@ describe('xlsx export', () => {
 
 	it('labels duty sessions', async () => {
 		const user = await createUser({ initials: 'DR1' });
-		await createEntry(user.id, 1, 'AM', { duty: true });
-		await createEntry(user.id, 1, 'PM', { location: 'ratho', duty: true });
+		await createEntry(user.id, 1, 'AM', { role: 'duty' });
+		await createEntry(user.id, 1, 'PM', { location: 'ratho', role: 'duty' });
 
 		const sheet = await exportSheet();
 		expect(cell(sheet, 2, 2)).toBe('Working (Duty)');
 		expect(cell(sheet, 3, 2)).toBe('Working (Ratho, Duty)');
 	});
 
+	it('labels team roles and sickness', async () => {
+		const user = await createUser({ initials: 'ANP1', category: 'anp' });
+		await createEntry(user.id, 1, 'AM', { role: 'duty_team' });
+		await createEntry(user.id, 1, 'PM', { status: 'sick', location: null });
+		await createEntry(user.id, 2, 'AM', { role: 'house_visits' });
+
+		const sheet = await exportSheet();
+		expect(cell(sheet, 2, 2)).toBe('Working (Duty team)');
+		expect(cell(sheet, 3, 2)).toBe('Off sick');
+		expect(cell(sheet, 4, 2)).toBe('Working (Visits)');
+	});
+
 	it('exports entries outside standard availability too', async () => {
-		const user = await createUser({ initials: 'DR1', workingSlots: '["1:AM"]' });
+		const user = await createUser({ initials: 'DR1', standardSlots: slotsAt(['1:AM']) });
 		await createEntry(user.id, 5, 'PM', { location: 'ratho' }); // non-standard extra session
 
 		const sheet = await exportSheet();
@@ -94,7 +106,7 @@ describe('xlsx export', () => {
 		const user = await createUser({ initials: 'DR1' });
 		const nextWeek = addWeeks(currentWeekStart(), 1);
 		await createEntry(user.id, 1, 'AM', { location: 'ratho' }); // this week
-		await createEntry(user.id, 1, 'AM', { weekStart: nextWeek, duty: true });
+		await createEntry(user.id, 1, 'AM', { weekStart: nextWeek, role: 'duty' });
 
 		expect(cell(await exportSheet(), 2, 2)).toBe('Working (Ratho)');
 		expect(cell(await exportSheet(nextWeek), 2, 2)).toBe('Working (Duty)');

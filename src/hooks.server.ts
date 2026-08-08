@@ -17,7 +17,10 @@ export const handle: Handle = async ({ event, resolve }) => {
 	}
 
 	// Admin-only sections.
-	if (path.startsWith('/users') && event.locals.user?.role !== 'admin') {
+	if (
+		(path.startsWith('/users') || path.startsWith('/settings')) &&
+		event.locals.user?.role !== 'admin'
+	) {
 		redirect(303, '/');
 	}
 

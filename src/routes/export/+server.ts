@@ -2,7 +2,13 @@ import ExcelJS from 'exceljs';
 import { and, asc, eq, inArray } from 'drizzle-orm';
 import { db } from '$lib/server/db';
 import { scheduleEntries, users } from '$lib/server/db/schema';
-import { PERIODS, WEEKDAYS, cellLabel, type LocationValue } from '$lib/constants';
+import {
+	PERIODS,
+	WEEKDAYS,
+	cellLabel,
+	type LocationValue,
+	type SessionRole
+} from '$lib/constants';
 import { resolveWeek } from '$lib/dates';
 import type { RequestHandler } from './$types';
 
@@ -42,9 +48,10 @@ export const GET: RequestHandler = async ({ url }) => {
 		grid.set(
 			`${entry.userId}:${entry.weekday}:${entry.period}`,
 			cellLabel({
-				status: entry.status === 'working' ? 'working' : 'not_working',
+				status:
+					entry.status === 'working' ? 'working' : entry.status === 'sick' ? 'sick' : 'not_working',
 				location: (entry.location as LocationValue | null) ?? null,
-				duty: entry.duty
+				role: (entry.role as SessionRole | null) ?? null
 			})
 		);
 	}

@@ -13,7 +13,8 @@ export const load: PageServerLoad = async () => {
 			initials: users.initials,
 			role: users.role,
 			category: users.category,
-			workingSlots: users.workingSlots,
+			standardSlots: users.standardSlots,
+			canWorkRatho: users.canWorkRatho,
 			displayOrder: users.displayOrder,
 			active: users.active
 		})
@@ -29,7 +30,7 @@ export const load: PageServerLoad = async () => {
 			period: scheduleEntries.period,
 			status: scheduleEntries.status,
 			location: scheduleEntries.location,
-			duty: scheduleEntries.duty,
+			role: scheduleEntries.role,
 			updatedAt: scheduleEntries.updatedAt
 		})
 		.from(scheduleEntries)

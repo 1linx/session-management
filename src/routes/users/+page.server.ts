@@ -12,7 +12,8 @@ export const load: PageServerLoad = async () => {
 			email: users.email,
 			role: users.role,
 			category: users.category,
-			workingSlots: users.workingSlots,
+			standardSlots: users.standardSlots,
+			canWorkRatho: users.canWorkRatho,
 			displayOrder: users.displayOrder,
 			onRota: users.onRota,
 			active: users.active
@@ -21,6 +22,9 @@ export const load: PageServerLoad = async () => {
 		.orderBy(asc(users.displayOrder), asc(users.initials));
 
 	return {
-		users: allUsers.map((u) => ({ ...u, workingSlots: JSON.parse(u.workingSlots) as string[] }))
+		users: allUsers.map((u) => ({
+			...u,
+			standardSlots: JSON.parse(u.standardSlots) as Record<string, string>
+		}))
 	};
 };

@@ -25,12 +25,12 @@ function hashPassword(password) {
 const now = Math.floor(Date.now() / 1000);
 
 const insertUser = db.prepare(`
-	INSERT INTO users (id, email, password_hash, name, initials, role, category, working_slots, display_order, on_rota, active, created_at)
-	VALUES (@id, @email, @passwordHash, @name, @initials, @role, @category, @workingSlots, @displayOrder, @onRota, 1, @createdAt)
+	INSERT INTO users (id, email, password_hash, name, initials, role, category, working_slots, can_work_ratho, display_order, on_rota, active, created_at)
+	VALUES (@id, @email, @passwordHash, @name, @initials, @role, @category, @standardSlots, @canWorkRatho, @displayOrder, @onRota, 1, @createdAt)
 `);
 const insertEntry = db.prepare(`
-	INSERT INTO schedule_entries (id, user_id, week_start, weekday, period, status, location, duty, updated_at)
-	VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+	INSERT INTO schedule_entries (id, user_id, week_start, weekday, period, status, location, role, updated_at)
+	VALUES (?, ?, ?, ?, ?, ?, ?, NULL, ?)
 `);
 
 // The sample rota goes into the current week (Monday, Europe/London).
@@ -43,20 +43,20 @@ const weekStart = new Date(todayUtc.getTime() - ((todayUtc.getUTCDay() + 6) % 7)
 // Sample rota lifted from example.xlsx.
 // Weekdays: 1 = Monday … 5 = Friday. W = working (East Calder), N = not working, R = working (Ratho).
 const STATUS = {
-	W: { status: 'working', location: 'east_calder', duty: 0 },
-	N: { status: 'not_working', location: null, duty: 0 },
-	R: { status: 'working', location: 'ratho', duty: 0 }
+	W: { status: 'working', location: 'east_calder' },
+	N: { status: 'not_working', location: null },
+	R: { status: 'working', location: 'ratho' }
 };
 const people = [
-	{ initials: 'DR1', category: 'doctor', rota: 'WW WW WW NN NN' },
-	{ initials: 'DR2', category: 'doctor', rota: 'NN WW NN WW WW' },
-	{ initials: 'DR3', category: 'doctor', rota: 'WW NN WW WN NN' },
-	{ initials: 'DR4', category: 'doctor', rota: 'NN WW WW WW WW' },
-	{ initials: 'DR5', category: 'doctor', rota: 'RR RR RR NN NR' },
-	{ initials: 'DR6', category: 'doctor', rota: 'NN NN NN RR RN' },
-	{ initials: 'DR7', category: 'doctor', rota: 'WW NN WW WN NN' },
-	{ initials: 'ANP1', category: 'anp', rota: 'NN WW NN WW WW' },
-	{ initials: 'ANP2', category: 'anp', rota: 'WW NN WW WN NN' }
+	{ initials: 'DR1', category: 'doctor', rota: 'WW WW WW NN NN', canWorkRatho: 1 },
+	{ initials: 'DR2', category: 'doctor', rota: 'NN WW NN WW WW', canWorkRatho: 0 },
+	{ initials: 'DR3', category: 'doctor', rota: 'WW NN WW WN NN', canWorkRatho: 1 },
+	{ initials: 'DR4', category: 'doctor', rota: 'NN WW WW WW WW', canWorkRatho: 0 },
+	{ initials: 'DR5', category: 'doctor', rota: 'RR RR RR NN NR', canWorkRatho: 1 },
+	{ initials: 'DR6', category: 'doctor', rota: 'NN NN NN RR RN', canWorkRatho: 1 },
+	{ initials: 'DR7', category: 'gp_trainee', rota: 'WW NN WW WN NN', canWorkRatho: 0 },
+	{ initials: 'ANP1', category: 'anp', rota: 'NN WW NN WW WW', canWorkRatho: 0 },
+	{ initials: 'ANP2', category: 'anp', rota: 'WW NN WW WN NN', canWorkRatho: 0 }
 ];
 
 const seedAll = db.transaction(() => {
@@ -68,9 +68,13 @@ const seedAll = db.transaction(() => {
 		initials: 'ADM',
 		role: 'admin',
 		category: 'doctor',
-		workingSlots: JSON.stringify(
-			[1, 2, 3, 4, 5].flatMap((d) => [`${d}:AM`, `${d}:PM`])
+		standardSlots: JSON.stringify(
+			Object.fromEntries([1, 2, 3, 4, 5].flatMap((d) => [
+				[`${d}:AM`, 'east_calder'],
+				[`${d}:PM`, 'east_calder']
+			]))
 		),
+		canWorkRatho: 0,
 		displayOrder: 0,
 		onRota: 0,
 		createdAt: now
@@ -79,11 +83,14 @@ const seedAll = db.transaction(() => {
 	people.forEach((p, i) => {
 		const userId = randomUUID();
 		const sessions = p.rota.replace(/\s+/g, ''); // 10 chars: Mon AM/PM … Fri AM/PM
-		// Available slots: both halves of any day with at least one worked
-		// session (mirrors the old per-day behaviour for the sample data).
-		const workingSlots = [1, 2, 3, 4, 5]
-			.filter((d) => sessions[(d - 1) * 2] !== 'N' || sessions[(d - 1) * 2 + 1] !== 'N')
-			.flatMap((d) => [`${d}:AM`, `${d}:PM`]);
+		// Standard availability: slot → practice, straight from the rota codes.
+		const standardSlots = {};
+		for (let d = 1; d <= 5; d++) {
+			['AM', 'PM'].forEach((period, pi) => {
+				const code = sessions[(d - 1) * 2 + pi];
+				if (code !== 'N') standardSlots[`${d}:${period}`] = STATUS[code].location;
+			});
+		}
 		insertUser.run({
 			id: userId,
 			email: `${p.initials.toLowerCase()}@example.com`,
@@ -92,7 +99,8 @@ const seedAll = db.transaction(() => {
 			initials: p.initials,
 			role: 'viewer',
 			category: p.category,
-			workingSlots: JSON.stringify(workingSlots),
+			standardSlots: JSON.stringify(standardSlots),
+			canWorkRatho: p.canWorkRatho,
 			displayOrder: (i + 1) * 10,
 			onRota: 1,
 			createdAt: now

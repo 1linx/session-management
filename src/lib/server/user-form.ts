@@ -1,4 +1,10 @@
-import { ALL_SLOTS, USER_CATEGORIES, USER_ROLES } from '$lib/constants';
+import {
+	ALL_SLOTS,
+	USER_CATEGORIES,
+	USER_ROLES,
+	isLocation,
+	type StandardSlots
+} from '$lib/constants';
 
 export type UserFormValues = {
 	name: string;
@@ -6,7 +12,8 @@ export type UserFormValues = {
 	email: string;
 	role: string;
 	category: string;
-	workingSlots: string[];
+	standardSlots: StandardSlots;
+	canWorkRatho: boolean;
 	displayOrder: number;
 	onRota: boolean;
 	active: boolean;
@@ -19,6 +26,12 @@ export type UserFormResult =
 
 /** Parse and validate the shared add/edit user form. */
 export function parseUserForm(data: FormData): UserFormResult {
+	const standardSlots: StandardSlots = {};
+	for (const slot of ALL_SLOTS) {
+		const value = String(data.get(`slot:${slot}`) ?? 'none');
+		if (isLocation(value)) standardSlots[slot] = value;
+	}
+
 	const values: UserFormValues = {
 		name: String(data.get('name') ?? '').trim(),
 		initials: String(data.get('initials') ?? '')
@@ -29,7 +42,8 @@ export function parseUserForm(data: FormData): UserFormResult {
 			.toLowerCase(),
 		role: String(data.get('role') ?? ''),
 		category: String(data.get('category') ?? ''),
-		workingSlots: ALL_SLOTS.filter((slot) => data.getAll('workingSlots').includes(slot)),
+		standardSlots,
+		canWorkRatho: data.get('canWorkRatho') === 'on',
 		displayOrder: Number(data.get('displayOrder') ?? 0),
 		onRota: data.get('onRota') === 'on',
 		active: data.get('active') === 'on',

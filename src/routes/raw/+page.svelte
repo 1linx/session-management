@@ -22,7 +22,8 @@
 					<th scope="col">initials</th>
 					<th scope="col">role</th>
 					<th scope="col">category</th>
-					<th scope="col">working_slots</th>
+					<th scope="col">working_slots (standard)</th>
+					<th scope="col">can_work_ratho</th>
 					<th scope="col">display_order</th>
 					<th scope="col">active</th>
 				</tr>
@@ -36,7 +37,8 @@
 						<td>{user.initials}</td>
 						<td>{user.role}</td>
 						<td>{user.category}</td>
-						<td class="font-mono">{user.workingSlots}</td>
+						<td class="font-mono">{user.standardSlots}</td>
+						<td>{user.canWorkRatho}</td>
 						<td>{user.displayOrder}</td>
 						<td>{user.active}</td>
 					</tr>
@@ -59,7 +61,7 @@
 					<th scope="col">period</th>
 					<th scope="col">status</th>
 					<th scope="col">location</th>
-					<th scope="col">duty</th>
+					<th scope="col">role</th>
 					<th scope="col">updated_at</th>
 				</tr>
 			</thead>
@@ -73,7 +75,7 @@
 						<td>{entry.period}</td>
 						<td class="font-mono">{entry.status}</td>
 						<td class="font-mono">{entry.location ?? 'null'}</td>
-						<td>{entry.duty}</td>
+						<td class="font-mono">{entry.role ?? 'null'}</td>
 						<td>{entry.updatedAt.toISOString()}</td>
 					</tr>
 				{/each}

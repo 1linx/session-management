@@ -15,7 +15,9 @@ const validFields = {
 	email: 'Jo.Bloggs@Example.com',
 	role: 'viewer',
 	category: 'anp',
-	workingSlots: ['1:AM', '3:PM'],
+	'slot:1:AM': 'east_calder',
+	'slot:3:PM': 'ratho',
+	canWorkRatho: 'on',
 	displayOrder: '20',
 	onRota: 'on',
 	active: 'on',
@@ -33,36 +35,39 @@ describe('parseUserForm', () => {
 			email: 'jo.bloggs@example.com', // lowercased
 			role: 'viewer',
 			category: 'anp',
-			workingSlots: ['1:AM', '3:PM'],
+			standardSlots: { '1:AM': 'east_calder', '3:PM': 'ratho' },
+			canWorkRatho: true,
 			displayOrder: 20,
 			onRota: true,
 			active: true
 		});
 	});
 
-	it('drops invalid working slot values and keeps canonical order', () => {
+	it('ignores unknown practice values and unticked slots', () => {
 		const result = parseUserForm(
-			form({ ...validFields, workingSlots: ['5:PM', 'nonsense', '9:AM', '1:AM', '1:ZZ'] })
+			form({ ...validFields, 'slot:1:AM': 'mars', 'slot:2:AM': 'none' })
 		);
 		expect(result.ok).toBe(true);
 		if (!result.ok) return;
-		expect(result.values.workingSlots).toEqual(['1:AM', '5:PM']);
+		expect(result.values.standardSlots).toEqual({ '3:PM': 'ratho' });
 	});
 
-	it('allows an empty working slots selection', () => {
-		const result = parseUserForm(form({ ...validFields, workingSlots: [] }));
+	it('allows an empty availability', () => {
+		const { 'slot:1:AM': _a, 'slot:3:PM': _b, ...rest } = validFields;
+		const result = parseUserForm(form(rest));
 		expect(result.ok).toBe(true);
 		if (!result.ok) return;
-		expect(result.values.workingSlots).toEqual([]);
+		expect(result.values.standardSlots).toEqual({});
 	});
 
 	it('treats unticked checkboxes as false', () => {
-		const { onRota, active, ...rest } = validFields;
+		const { onRota, active, canWorkRatho, ...rest } = validFields;
 		const result = parseUserForm(form(rest));
 		expect(result.ok).toBe(true);
 		if (!result.ok) return;
 		expect(result.values.onRota).toBe(false);
 		expect(result.values.active).toBe(false);
+		expect(result.values.canWorkRatho).toBe(false);
 	});
 
 	it('allows a blank password (edit form keeps the existing one)', () => {

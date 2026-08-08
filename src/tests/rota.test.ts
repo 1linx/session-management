@@ -4,13 +4,21 @@ import { db } from '$lib/server/db';
 import { scheduleEntries } from '$lib/server/db/schema';
 import { actions, load } from '../routes/+page.server';
 import { addDays, addWeeks, currentWeekStart } from '$lib/dates';
-import { adminLocals, createEntry, createUser, formRequest, resetDb, viewerLocals } from './helpers';
+import {
+	adminLocals,
+	createEntry,
+	createUser,
+	formRequest,
+	resetDb,
+	slotsAt,
+	viewerLocals
+} from './helpers';
 
 type LoadEvent = Parameters<typeof load>[0];
 type SaveEvent = Parameters<(typeof actions)['save']>[0];
 
 type LoadResult = {
-	rotaUsers: { id: string; initials: string; workingSlots: string[] }[];
+	rotaUsers: { id: string; initials: string; standardSlots: Record<string, string> }[];
 	grid: Record<string, Record<string, string>>;
 	week: string;
 	currentWeek: string;
@@ -54,13 +62,17 @@ describe('rota load', () => {
 		expect(rotaUsers.map((u) => u.initials)).toEqual(['A', 'B']);
 	});
 
-	it('parses working slots and builds the grid of encoded cell keys', async () => {
-		const user = await createUser({ workingSlots: '["1:AM","2:PM","3:AM"]' });
-		await createEntry(user.id, 1, 'AM', { location: 'ratho', duty: true });
+	it('parses standard slots and builds the grid of encoded cell keys', async () => {
+		const user = await createUser({ standardSlots: slotsAt(['1:AM', '2:PM', '3:AM']) });
+		await createEntry(user.id, 1, 'AM', { location: 'ratho', role: 'duty' });
 		await createEntry(user.id, 3, 'AM');
 
 		const { rotaUsers, grid } = await runLoad();
-		expect(rotaUsers[0].workingSlots).toEqual(['1:AM', '2:PM', '3:AM']);
+		expect(rotaUsers[0].standardSlots).toEqual({
+			'1:AM': 'east_calder',
+			'2:PM': 'east_calder',
+			'3:AM': 'east_calder'
+		});
 		expect(grid[user.id]['1:AM']).toBe('working:ratho:duty');
 		expect(grid[user.id]['3:AM']).toBe('working:east_calder');
 		expect(grid[user.id]['2:PM']).toBeUndefined(); // no entry yet
@@ -70,7 +82,7 @@ describe('rota load', () => {
 		const user = await createUser();
 		const nextWeek = addWeeks(thisWeek, 1);
 		await createEntry(user.id, 1, 'AM', { location: 'ratho' });
-		await createEntry(user.id, 1, 'AM', { weekStart: nextWeek, duty: true });
+		await createEntry(user.id, 1, 'AM', { weekStart: nextWeek, role: 'duty' });
 
 		const current = await runLoad();
 		expect(current.week).toBe(thisWeek);
@@ -100,7 +112,7 @@ describe('rota save action', () => {
 
 	it('creates an entry for an available slot', async () => {
 		const admin = await createUser({ role: 'admin' });
-		const user = await createUser({ workingSlots: '["1:AM"]' });
+		const user = await createUser({ standardSlots: slotsAt(['1:AM']) });
 
 		const result = await actions.save(
 			saveEvent({ [`cell:${user.id}:1:AM`]: 'working:east_calder' }, adminLocals(admin.id))
@@ -109,13 +121,32 @@ describe('rota save action', () => {
 		expect(await entryInDb(user.id, 1, 'AM')).toMatchObject({
 			status: 'working',
 			location: 'east_calder',
-			duty: false
+			role: null
 		});
+	});
+
+	it('saves sickness and role sub-choices', async () => {
+		const admin = await createUser({ role: 'admin' });
+		const user = await createUser();
+
+		await actions.save(
+			saveEvent(
+				{
+					[`cell:${user.id}:1:AM`]: 'sick',
+					[`cell:${user.id}:1:PM`]: 'working:east_calder:duty_team',
+					[`cell:${user.id}:2:AM`]: 'working:east_calder:house_visits'
+				},
+				adminLocals(admin.id)
+			)
+		);
+		expect(await entryInDb(user.id, 1, 'AM')).toMatchObject({ status: 'sick', location: null });
+		expect(await entryInDb(user.id, 1, 'PM')).toMatchObject({ role: 'duty_team' });
+		expect(await entryInDb(user.id, 2, 'AM')).toMatchObject({ role: 'house_visits' });
 	});
 
 	it('saves duty and location sub-choices', async () => {
 		const admin = await createUser({ role: 'admin' });
-		const user = await createUser({ workingSlots: '["1:AM","1:PM"]' });
+		const user = await createUser({ standardSlots: slotsAt(['1:AM', '1:PM']) });
 
 		await actions.save(
 			saveEvent(
@@ -129,29 +160,29 @@ describe('rota save action', () => {
 		expect(await entryInDb(user.id, 1, 'AM')).toMatchObject({
 			status: 'working',
 			location: 'ratho',
-			duty: true
+			role: 'duty'
 		});
 		expect(await entryInDb(user.id, 1, 'PM')).toMatchObject({
 			status: 'working',
 			location: 'east_calder',
-			duty: true
+			role: 'duty'
 		});
 	});
 
 	it('updates an existing entry rather than duplicating it, clearing stale sub-choices', async () => {
 		const admin = await createUser({ role: 'admin' });
-		const user = await createUser({ workingSlots: '["1:AM"]' });
-		await createEntry(user.id, 1, 'AM', { location: 'ratho', duty: true });
+		const user = await createUser({ standardSlots: slotsAt(['1:AM']) });
+		await createEntry(user.id, 1, 'AM', { location: 'ratho', role: 'duty' });
 
 		await actions.save(saveEvent({ [`cell:${user.id}:1:AM`]: 'not_working' }, adminLocals(admin.id)));
 		const rows = await db.select().from(scheduleEntries).where(eq(scheduleEntries.userId, user.id));
 		expect(rows).toHaveLength(1);
-		expect(rows[0]).toMatchObject({ status: 'not_working', location: null, duty: false });
+		expect(rows[0]).toMatchObject({ status: 'not_working', location: null, role: null });
 	});
 
 	it('saves slots outside standard availability too', async () => {
 		const admin = await createUser({ role: 'admin' });
-		const user = await createUser({ workingSlots: '["1:AM"]' });
+		const user = await createUser({ standardSlots: slotsAt(['1:AM']) });
 
 		await actions.save(
 			saveEvent({ [`cell:${user.id}:1:PM`]: 'working:east_calder' }, adminLocals(admin.id))
@@ -180,7 +211,7 @@ describe('rota save action', () => {
 
 	it('ignores invalid cell values', async () => {
 		const admin = await createUser({ role: 'admin' });
-		const user = await createUser({ workingSlots: '["1:AM"]' });
+		const user = await createUser({ standardSlots: slotsAt(['1:AM']) });
 
 		for (const bad of ['on_holiday', 'working', 'working:mars', 'not_working:duty']) {
 			await actions.save(saveEvent({ [`cell:${user.id}:1:AM`]: bad }, adminLocals(admin.id)));
@@ -190,7 +221,7 @@ describe('rota save action', () => {
 
 	it('ignores fields for unknown or inactive users', async () => {
 		const admin = await createUser({ role: 'admin' });
-		const inactive = await createUser({ active: false, workingSlots: '["1:AM"]' });
+		const inactive = await createUser({ active: false, standardSlots: slotsAt(['1:AM']) });
 
 		await actions.save(
 			saveEvent({ [`cell:${inactive.id}:1:AM`]: 'working:east_calder' }, adminLocals(admin.id))
@@ -199,7 +230,7 @@ describe('rota save action', () => {
 	});
 
 	it('refuses viewers', async () => {
-		const viewer = await createUser({ workingSlots: '["1:AM"]' });
+		const viewer = await createUser({ standardSlots: slotsAt(['1:AM']) });
 
 		const result = await actions.save(
 			saveEvent({ [`cell:${viewer.id}:1:AM`]: 'working:east_calder' }, viewerLocals(viewer.id))
@@ -210,7 +241,7 @@ describe('rota save action', () => {
 
 	it('writes to the posted week without touching other weeks', async () => {
 		const admin = await createUser({ role: 'admin' });
-		const user = await createUser({ workingSlots: '["1:AM"]' });
+		const user = await createUser({ standardSlots: slotsAt(['1:AM']) });
 		const nextWeek = addWeeks(thisWeek, 1);
 		await createEntry(user.id, 1, 'AM', { location: 'ratho' }); // this week
 
@@ -220,16 +251,16 @@ describe('rota save action', () => {
 
 		const rows = await db.select().from(scheduleEntries).where(eq(scheduleEntries.userId, user.id));
 		expect(rows).toHaveLength(2);
-		expect(rows.find((r) => r.weekStart === thisWeek)).toMatchObject({ location: 'ratho', duty: false });
+		expect(rows.find((r) => r.weekStart === thisWeek)).toMatchObject({ location: 'ratho', role: null });
 		expect(rows.find((r) => r.weekStart === nextWeek)).toMatchObject({
 			location: 'east_calder',
-			duty: true
+			role: 'duty'
 		});
 	});
 
 	it('rejects a missing or invalid week', async () => {
 		const admin = await createUser({ role: 'admin' });
-		const user = await createUser({ workingSlots: '["1:AM"]' });
+		const user = await createUser({ standardSlots: slotsAt(['1:AM']) });
 
 		for (const badWeek of ['', 'garbage', '2026-02-30', addDays(thisWeek, 2)]) {
 			const result = await actions.save(
@@ -242,8 +273,8 @@ describe('rota save action', () => {
 
 	it('saves several cells across users in one submission', async () => {
 		const admin = await createUser({ role: 'admin' });
-		const a = await createUser({ workingSlots: '["1:AM","1:PM"]' });
-		const b = await createUser({ workingSlots: '["5:PM"]' });
+		const a = await createUser({ standardSlots: slotsAt(['1:AM', '1:PM']) });
+		const b = await createUser({ standardSlots: slotsAt(['5:PM']) });
 
 		await actions.save(
 			saveEvent(
@@ -257,7 +288,7 @@ describe('rota save action', () => {
 		);
 		expect(await entryInDb(a.id, 1, 'AM')).toMatchObject({ status: 'working' });
 		expect(await entryInDb(a.id, 1, 'PM')).toMatchObject({ status: 'not_working' });
-		expect(await entryInDb(b.id, 5, 'PM')).toMatchObject({ location: 'ratho', duty: true });
+		expect(await entryInDb(b.id, 5, 'PM')).toMatchObject({ location: 'ratho', role: 'duty' });
 	});
 });
 
@@ -272,7 +303,7 @@ describe('useDefaults action', () => {
 	it('marks everyone Working (default location) on their standard availability', async () => {
 		const admin = await createUser({ role: 'admin', onRota: false });
 		const fullTimer = await createUser(); // all 10 slots
-		const morningsOnly = await createUser({ workingSlots: '["1:AM","2:AM"]' });
+		const morningsOnly = await createUser({ standardSlots: slotsAt(['1:AM', '2:AM']) });
 
 		const result = await actions.useDefaults(defaultsEvent(adminLocals(admin.id), thisWeek));
 		expect(result).toMatchObject({ defaulted: true });
@@ -282,13 +313,27 @@ describe('useDefaults action', () => {
 			.from(scheduleEntries)
 			.where(eq(scheduleEntries.weekStart, thisWeek));
 		expect(rows).toHaveLength(12); // 10 + 2, nothing for the off-rota admin
-		expect(rows.every((r) => r.status === 'working' && r.location === 'east_calder' && !r.duty)).toBe(
+		expect(rows.every((r) => r.status === 'working' && r.location === 'east_calder' && r.role === null)).toBe(
 			true
 		);
 		expect(rows.filter((r) => r.userId === morningsOnly.id).map((r) => `${r.weekday}:${r.period}`).sort()).toEqual(
 			['1:AM', '2:AM']
 		);
 		expect(rows.some((r) => r.userId === fullTimer.id && r.weekday === 5 && r.period === 'PM')).toBe(true);
+	});
+
+	it('uses each slot’s standard practice', async () => {
+		const admin = await createUser({ role: 'admin', onRota: false });
+		const rathoDoc = await createUser({ standardSlots: slotsAt(['1:AM', '1:PM'], 'ratho') });
+
+		await actions.useDefaults(defaultsEvent(adminLocals(admin.id), thisWeek));
+
+		const rows = await db
+			.select()
+			.from(scheduleEntries)
+			.where(eq(scheduleEntries.userId, rathoDoc.id));
+		expect(rows).toHaveLength(2);
+		expect(rows.every((r) => r.location === 'ratho')).toBe(true);
 	});
 
 	it('refuses when the week already has entries', async () => {
@@ -319,7 +364,7 @@ describe('copyWeek action', () => {
 	it('copies the previous week into an empty week', async () => {
 		const admin = await createUser({ role: 'admin' });
 		const user = await createUser();
-		await createEntry(user.id, 1, 'AM', { location: 'ratho', duty: true });
+		await createEntry(user.id, 1, 'AM', { location: 'ratho', role: 'duty' });
 		await createEntry(user.id, 2, 'PM', { status: 'not_working', location: null });
 		const nextWeek = addWeeks(thisWeek, 1);
 
@@ -331,7 +376,7 @@ describe('copyWeek action', () => {
 			.from(scheduleEntries)
 			.where(eq(scheduleEntries.weekStart, nextWeek));
 		expect(copied).toHaveLength(2);
-		expect(copied.find((r) => r.weekday === 1)).toMatchObject({ location: 'ratho', duty: true });
+		expect(copied.find((r) => r.weekday === 1)).toMatchObject({ location: 'ratho', role: 'duty' });
 		expect(copied.find((r) => r.weekday === 2)).toMatchObject({ status: 'not_working' });
 	});
 

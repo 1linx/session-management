@@ -2,6 +2,7 @@ import { db } from '$lib/server/db';
 import { authSessions, scheduleEntries, users } from '$lib/server/db/schema';
 import { hashPassword } from '$lib/server/auth';
 import { currentWeekStart } from '$lib/dates';
+import { ALL_SLOTS } from '$lib/constants';
 import { isRedirect, type Cookies } from '@sveltejs/kit';
 import { vi } from 'vitest';
 
@@ -38,14 +39,20 @@ export async function createUser(overrides: UserOverrides = {}) {
 			initials: `U${userCounter}`,
 			role: 'viewer',
 			category: 'doctor',
-			workingSlots: JSON.stringify([
-				'1:AM', '1:PM', '2:AM', '2:PM', '3:AM', '3:PM', '4:AM', '4:PM', '5:AM', '5:PM'
-			]),
+			// Standard availability: every slot at East Calder by default.
+			standardSlots: JSON.stringify(
+				Object.fromEntries(ALL_SLOTS.map((slot) => [slot, 'east_calder']))
+			),
 			displayOrder: userCounter * 10,
 			...rest
 		})
 		.returning();
 	return row;
+}
+
+/** JSON standardSlots value: the given slots at a practice. */
+export function slotsAt(slots: string[], practice = 'east_calder'): string {
+	return JSON.stringify(Object.fromEntries(slots.map((slot) => [slot, practice])));
 }
 
 /**
@@ -57,7 +64,7 @@ export async function createEntry(
 	userId: string,
 	weekday: number,
 	period: string,
-	cell: { status?: string; location?: string | null; duty?: boolean; weekStart?: string } = {}
+	cell: { status?: string; location?: string | null; role?: string | null; weekStart?: string } = {}
 ) {
 	const status = cell.status ?? 'working';
 	const [row] = await db
@@ -69,7 +76,7 @@ export async function createEntry(
 			period,
 			status,
 			location: cell.location !== undefined ? cell.location : status === 'working' ? 'east_calder' : null,
-			duty: cell.duty ?? false
+			role: cell.role ?? null
 		})
 		.returning();
 	return row;

@@ -20,7 +20,13 @@
 
 	const navLinks = $derived([
 		{ href: '/', label: 'Rota' },
-		...(data.user?.role === 'admin' ? [{ href: '/users', label: 'Users' }] : []),
+		{ href: '/absences', label: 'Absences' },
+		...(data.user?.role === 'admin'
+			? [
+					{ href: '/users', label: 'Users' },
+					{ href: '/settings', label: 'Staffing rules' }
+				]
+			: []),
 		{ href: '/raw', label: 'Raw data' }
 	]);
 </script>
