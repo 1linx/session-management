@@ -27,6 +27,22 @@ Log in with initials as the username: admin is `ADM` / `changeme-admin`
 (sample staff are `DR1` … `ANP2` / `changeme`). **Change these before
 deploying anywhere real.**
 
+### Custom seed data
+
+The sample rota is only a fallback. To make the real users + staffing rules
+the default data set: set everything up through the UI, then
+
+```sh
+npm run db:snapshot                     # or: node scripts/snapshot.js --with-passwords
+```
+
+This writes `scripts/seed-data.json`, which `db:seed` prefers from then on
+(no rota entries are captured — weeks start empty). Without
+`--with-passwords`, reseeded users all get the password `changeme`; with it,
+everyone keeps their login. Commit the file to make it the team default —
+but note that with password hashes included it belongs in a **private**
+repo only.
+
 ## Concepts
 
 - **Practices**: East Calder (default) and Ratho, both open Mon–Fri 8am–6pm.
