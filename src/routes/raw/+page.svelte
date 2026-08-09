@@ -23,6 +23,7 @@
 					<th scope="col">category</th>
 					<th scope="col">working_slots (standard)</th>
 					<th scope="col">can_work_ratho</th>
+					<th scope="col">leave_entitlement</th>
 					<th scope="col">display_order</th>
 					<th scope="col">active</th>
 				</tr>
@@ -37,6 +38,7 @@
 						<td>{user.category}</td>
 						<td class="font-mono">{user.standardSlots}</td>
 						<td>{user.canWorkRatho}</td>
+						<td>{user.leaveEntitlement}</td>
 						<td>{user.displayOrder}</td>
 						<td>{user.active}</td>
 					</tr>

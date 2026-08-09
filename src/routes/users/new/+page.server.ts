@@ -25,6 +25,7 @@ export const actions: Actions = {
 				category: values.category,
 				standardSlots: JSON.stringify(values.standardSlots),
 				canWorkRatho: values.canWorkRatho,
+				leaveEntitlement: values.leaveEntitlement,
 				displayOrder: values.displayOrder,
 				onRota: values.onRota,
 				active: values.active,

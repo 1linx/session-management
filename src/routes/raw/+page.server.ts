@@ -14,6 +14,7 @@ export const load: PageServerLoad = async () => {
 			category: users.category,
 			standardSlots: users.standardSlots,
 			canWorkRatho: users.canWorkRatho,
+			leaveEntitlement: users.leaveEntitlement,
 			displayOrder: users.displayOrder,
 			active: users.active
 		})

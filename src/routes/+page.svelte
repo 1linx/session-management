@@ -138,9 +138,18 @@
 	function classesFor(key: string): string {
 		const cell = decodeCell(key);
 		if (!cell) return 'bg-white';
-		if (cell.status === 'sick') return 'bg-coral';
-		if (cell.status !== 'working') return 'bg-white';
-		return cell.location === 'ratho' ? 'bg-sky' : 'bg-mint';
+		switch (cell.status) {
+			case 'working':
+				return cell.location === 'ratho' ? 'bg-sky' : 'bg-mint';
+			case 'sick':
+				return 'bg-coral';
+			case 'annual_leave':
+				return 'bg-lilac';
+			case 'not_working':
+				return 'bg-white';
+			default:
+				return 'bg-accent'; // admin work / minor surgery / special activity
+		}
 	}
 </script>
 
@@ -153,10 +162,10 @@
 				{roleChip(cell.role)}
 			</span>
 		{/if}
-	{:else if cell.status === 'sick'}
-		<span class="font-bold">Off sick</span>
-	{:else}
+	{:else if cell.status === 'not_working'}
 		<span class="text-neutral-700">Not working</span>
+	{:else}
+		<span class="font-bold">{cellLabel(cell)}</span>
 	{/if}
 {/snippet}
 
@@ -420,6 +429,12 @@
 		<li><span class="inline-block border-2 border-ink bg-mint px-2 py-0.5 font-bold">East Calder</span></li>
 		<li><span class="inline-block border-2 border-ink bg-sky px-2 py-0.5 font-bold">Ratho</span></li>
 		<li><span class="inline-block border-2 border-ink bg-coral px-2 py-0.5 font-bold">Off sick</span></li>
+		<li><span class="inline-block border-2 border-ink bg-lilac px-2 py-0.5 font-bold">Annual leave</span></li>
+		<li>
+			<span class="inline-block border-2 border-ink bg-accent px-2 py-0.5 font-bold">
+				Admin / surgery / special
+			</span>
+		</li>
 		<li>
 			<span class="inline-block border-2 border-ink bg-white px-2 py-0.5 font-bold">
 				<span class="mr-1 inline-block bg-ink px-1.5 py-0.5 align-middle text-[10px] font-bold tracking-widest text-white uppercase">Duty</span>
@@ -456,7 +471,7 @@
 				✕
 			</button>
 		</div>
-		<div class="flex flex-col gap-4 p-4">
+		<div class="flex max-h-[80vh] flex-col gap-4 overflow-y-auto p-4">
 			{#each CELL_OPTION_GROUPS as group (group)}
 				<div>
 					<h3 class="mb-2 text-xs font-bold tracking-widest uppercase">{group}</h3>

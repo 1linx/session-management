@@ -6,6 +6,7 @@ import {
 	ALL_SLOTS,
 	decodeCell,
 	encodeCell,
+	statusFromDb,
 	type CellValue,
 	type LocationValue,
 	type SessionRole,
@@ -52,7 +53,7 @@ function toCellValue(entry: {
 	role: string | null;
 }): CellValue {
 	return {
-		status: entry.status === 'working' ? 'working' : entry.status === 'sick' ? 'sick' : 'not_working',
+		status: statusFromDb(entry.status),
 		location: (entry.location as LocationValue | null) ?? null,
 		role: (entry.role as SessionRole | null) ?? null
 	};

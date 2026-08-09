@@ -3,14 +3,15 @@ import {
 	ALL_SLOTS,
 	CELL_OPTIONS,
 	NOT_WORKING,
-	OFF_SICK,
+	OFF_STATUSES,
 	PERIODS,
 	WEEKDAYS,
 	cellLabel,
 	decodeCell,
 	encodeCell,
 	isClinician,
-	slotKey
+	slotKey,
+	statusFromDb
 } from '$lib/constants';
 
 describe('cell encode/decode', () => {
@@ -23,7 +24,9 @@ describe('cell encode/decode', () => {
 
 	it('decodes the known keys', () => {
 		expect(decodeCell('not_working')).toEqual(NOT_WORKING);
-		expect(decodeCell('sick')).toEqual(OFF_SICK);
+		for (const off of OFF_STATUSES) {
+			expect(decodeCell(off.value)).toEqual({ status: off.value, location: null, role: null });
+		}
 		expect(decodeCell('working:east_calder')).toEqual({
 			status: 'working',
 			location: 'east_calder',
@@ -54,7 +57,15 @@ describe('cell encode/decode', () => {
 		expect(decodeCell('working:ratho:duty:duty')).toBeNull();
 		expect(decodeCell('not_working:duty')).toBeNull();
 		expect(decodeCell('sick:duty')).toBeNull();
+		expect(decodeCell('annual_leave:east_calder')).toBeNull();
 		expect(decodeCell('on_holiday')).toBeNull();
+	});
+
+	it('maps raw stored statuses safely', () => {
+		expect(statusFromDb('working')).toBe('working');
+		expect(statusFromDb('annual_leave')).toBe('annual_leave');
+		expect(statusFromDb('minor_surgery')).toBe('minor_surgery');
+		expect(statusFromDb('working_ratho')).toBe('not_working'); // legacy junk
 	});
 });
 
@@ -67,7 +78,11 @@ describe('cellLabel', () => {
 		expect(cellLabel(decodeCell('working:ratho')!)).toBe('Working (Ratho)');
 		expect(cellLabel(decodeCell('working:ratho:duty')!)).toBe('Working (Ratho, Duty)');
 		expect(cellLabel(NOT_WORKING)).toBe('Not working');
-		expect(cellLabel(OFF_SICK)).toBe('Off sick');
+		expect(cellLabel(decodeCell('sick')!)).toBe('Off sick');
+		expect(cellLabel(decodeCell('annual_leave')!)).toBe('Annual leave');
+		expect(cellLabel(decodeCell('admin_work')!)).toBe('Admin work');
+		expect(cellLabel(decodeCell('minor_surgery')!)).toBe('Minor surgery');
+		expect(cellLabel(decodeCell('special')!)).toBe('Special activity');
 	});
 });
 
@@ -82,8 +97,17 @@ describe('CELL_OPTIONS', () => {
 			'working:ratho',
 			'working:ratho:duty',
 			'not_working',
-			'sick'
+			'sick',
+			'annual_leave',
+			'admin_work',
+			'minor_surgery',
+			'special'
 		]);
+		expect(
+			CELL_OPTIONS.filter((o) => o.value.status !== 'working').every(
+				(o) => o.group === 'Not available'
+			)
+		).toBe(true);
 	});
 });
 

@@ -62,6 +62,22 @@ export function weekLabel(isoMonday: string): string {
 		.replace(',', ''); // ICU inserts "Monday, 3 …"; UK style has no comma
 }
 
+/**
+ * The leave year runs 1 April – 31 March (UK convention). Returns the start
+ * of the leave year containing the given date.
+ */
+export function leaveYearStart(isoDate: string): string {
+	const year = Number(isoDate.slice(0, 4));
+	const start = `${year}-04-01`;
+	return isoDate >= start ? start : `${year - 1}-04-01`;
+}
+
+/** [start, end) of the leave year containing the given date. */
+export function leaveYearRange(isoDate: string): { start: string; end: string } {
+	const start = leaveYearStart(isoDate);
+	return { start, end: `${Number(start.slice(0, 4)) + 1}${start.slice(4)}` };
+}
+
 /** "3 Aug" — the date of a weekday (1 = Monday) within a week, for row headers. */
 export function dayDateLabel(isoMonday: string, weekday: number): string {
 	return new Intl.DateTimeFormat('en-GB', {

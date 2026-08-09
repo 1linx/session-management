@@ -17,6 +17,7 @@
 		category?: string;
 		standardSlots?: StandardSlots;
 		canWorkRatho?: boolean;
+		leaveEntitlement?: number;
 		displayOrder?: number;
 		onRota?: boolean;
 		active?: boolean;
@@ -145,6 +146,25 @@
 			Can be sent to Ratho if cover is required (used by Auto-fix)
 		</label>
 	</fieldset>
+
+	<div>
+		<label for="leaveEntitlement" class="nb-label">Annual leave entitlement</label>
+		<input
+			id="leaveEntitlement"
+			name="leaveEntitlement"
+			type="number"
+			min="0"
+			max="999"
+			step="1"
+			value={values.leaveEntitlement ?? 0}
+			class="nb-input max-w-40"
+			aria-describedby="leaveEntitlement-hint"
+		/>
+		<p id="leaveEntitlement-hint" class="mt-1 text-sm">
+			Sessions per leave year (1 April – 31 March). Half a day = 1 session, so e.g. 28 days =
+			56 sessions.
+		</p>
+	</div>
 
 	<div class="grid gap-5 sm:grid-cols-2">
 		<div>

@@ -23,7 +23,7 @@ const db = new Database(dbPath, { readonly: true });
 
 const users = db
 	.prepare(
-		`SELECT name, initials, role, category, working_slots, can_work_ratho,
+		`SELECT name, initials, role, category, working_slots, can_work_ratho, leave_entitlement,
 		        display_order, on_rota, active, password_hash
 		 FROM users ORDER BY display_order, initials`
 	)
@@ -50,6 +50,7 @@ const data = {
 		category: u.category,
 		standardSlots: JSON.parse(u.working_slots),
 		canWorkRatho: Boolean(u.can_work_ratho),
+		leaveEntitlement: u.leave_entitlement,
 		displayOrder: u.display_order,
 		onRota: Boolean(u.on_rota),
 		active: Boolean(u.active),

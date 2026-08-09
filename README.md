@@ -18,7 +18,7 @@ board standards.
 
 ```sh
 npm install
-npm run db:push -- --force   # create/update the SQLite schema (local.db)
+npm run db:migrate           # create/update the SQLite schema (local.db)
 npm run db:seed              # admin account + sample rota from example.xlsx
 npm run dev
 ```
@@ -59,8 +59,10 @@ repo only.
   standard sessions never deletes what's already rostered. A separate
   "can be sent to Ratho" flag tells Auto-fix who may be relocated.
 - **Session state**: Working (at a practice, optionally with a role: Duty
-  doctor, EC Duty team, EC House visits), Not working, or Off sick. Sick
-  sessions are totalled per person on the Absences page.
+  doctor, EC Duty team, EC House visits) or unavailable — Not working, Off
+  sick, Annual leave, Admin work, Minor surgery, Special activity. The
+  Absences page totals annual leave against each person's entitlement for
+  the current leave year (1 April – 31 March) and sickness as raw totals.
 - **Weeks**: the rota is managed week by week. The grid shows one week
   (identified by its Monday, `?week=YYYY-MM-DD`), defaulting to the current
   week in UK time, with previous/next navigation. Admins can populate an
@@ -100,21 +102,20 @@ roles, promotes routine GPs to duty (choosing the lowest
 duty-per-sessions-worked ratio so duty spreads proportionately), relocates a
 `canWorkRatho` GP when Ratho lacks one (only if EC still meets its own
 rules), fills the duty team ANP-first, then house visits — never touching
-Not working/Off sick cells and never dropping anyone below the routine
-minimum. Every change is listed in the UI; what can't be fixed stays red,
+unavailable cells (not working, sick, leave, activities) and never dropping
+anyone below the routine minimum. Every change is listed in the UI; what can't be fixed stays red,
 and navigating away discards the proposal like any other unsaved edit.
 
-Planned next (from the brief, not yet implemented): annual leave tracking
-with entitlement summaries, special-activity allocations (admin/minor
-surgery), and a cross-site auto-allocation history ("sub-rota") recording
-who was moved or given extra duty.
+Planned next (from the brief, not yet implemented): a cross-site
+auto-allocation history ("sub-rota") recording who was moved or given
+extra duty.
 
 ## Pages
 
 | Route | Access | Purpose |
 | --- | --- | --- |
 | `/` | all users | The weekly rota grid (editable for admins), rule warnings, Auto-fix |
-| `/absences` | all users | Sickness absence totals per staff member |
+| `/absences` | all users | Annual leave vs entitlement + sickness totals |
 | `/users` | admin | Add/edit users, standard sessions, order, roles |
 | `/settings` | admin | Staffing-rule requirements (minimums, duty team, house visits) |
 | `/export?week=` | all users | Download one week's rota as `rota-YYYY-MM-DD.xlsx` |
@@ -144,11 +145,17 @@ staffing rules engine and Auto-fix behaviours, user create/edit/delete
 
 ## Planned next (from the brief)
 
-- Annual leave tracking with entitlement summaries.
-- Special-activity allocations (admin / minor surgery / other).
 - Cross-site auto-allocation history ("sub-rota").
 - **Other user sets**: partition by adding a `groupId` to `users` and scoping
   queries by it.
+
+## Schema changes
+
+The schema is applied via committed migration files in `drizzle/` — after
+editing [schema.ts](src/lib/server/db/schema.ts), run `npm run db:generate`
+(review the SQL it writes!) and `npm run db:migrate`. Avoid
+`drizzle-kit push` against data you care about: it can resolve schema
+diffs destructively (we've seen it truncate a table to add a column).
 
 ## Deployment
 

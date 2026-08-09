@@ -67,16 +67,20 @@ describe('xlsx export', () => {
 		expect(cell(sheet, 3, 2)).toBe('Working (Ratho, Duty)');
 	});
 
-	it('labels team roles and sickness', async () => {
+	it('labels team roles and unavailable statuses', async () => {
 		const user = await createUser({ initials: 'ANP1', category: 'anp' });
 		await createEntry(user.id, 1, 'AM', { role: 'duty_team' });
 		await createEntry(user.id, 1, 'PM', { status: 'sick', location: null });
 		await createEntry(user.id, 2, 'AM', { role: 'house_visits' });
+		await createEntry(user.id, 2, 'PM', { status: 'annual_leave', location: null });
+		await createEntry(user.id, 3, 'AM', { status: 'minor_surgery', location: null });
 
 		const sheet = await exportSheet();
 		expect(cell(sheet, 2, 2)).toBe('Working (Duty team)');
 		expect(cell(sheet, 3, 2)).toBe('Off sick');
 		expect(cell(sheet, 4, 2)).toBe('Working (Visits)');
+		expect(cell(sheet, 5, 2)).toBe('Annual leave');
+		expect(cell(sheet, 6, 2)).toBe('Minor surgery');
 	});
 
 	it('exports entries outside standard availability too', async () => {

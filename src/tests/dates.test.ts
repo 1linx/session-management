@@ -4,6 +4,8 @@ import {
 	currentWeekStart,
 	dayDateLabel,
 	isISODate,
+	leaveYearRange,
+	leaveYearStart,
 	mondayOf,
 	resolveWeek,
 	weekLabel
@@ -70,6 +72,19 @@ describe('labels', () => {
 	it('formats row-header day dates', () => {
 		expect(dayDateLabel('2026-08-03', 1)).toBe('3 Aug'); // Monday
 		expect(dayDateLabel('2026-08-03', 5)).toBe('7 Aug'); // Friday
+	});
+});
+
+describe('leave year (1 April – 31 March)', () => {
+	it('finds the start of the containing leave year', () => {
+		expect(leaveYearStart('2026-08-09')).toBe('2026-04-01');
+		expect(leaveYearStart('2026-04-01')).toBe('2026-04-01'); // first day
+		expect(leaveYearStart('2026-03-31')).toBe('2025-04-01'); // last day of prior year
+		expect(leaveYearStart('2027-01-15')).toBe('2026-04-01');
+	});
+
+	it('produces a [start, end) range', () => {
+		expect(leaveYearRange('2026-08-09')).toEqual({ start: '2026-04-01', end: '2027-04-01' });
 	});
 });
 

@@ -44,16 +44,20 @@ describe('autoFixWeek', () => {
 		expect(changes[0].reason).toContain('duty doctor');
 	});
 
-	it('never touches not-working or sick cells', () => {
-		const staff = [gp('a'), gp('b')];
+	it('never touches unavailable cells (not working, sick, leave, activities)', () => {
+		const staff = [gp('a'), gp('b'), gp('c'), gp('d')];
 		const before = grid({
 			a: { '1:AM': 'sick' },
-			b: { '1:AM': 'not_working' }
+			b: { '1:AM': 'not_working' },
+			c: { '1:AM': 'annual_leave' },
+			d: { '1:AM': 'minor_surgery' }
 		});
 		const { grid: fixed, changes } = autoFixWeek(staff, before, settings());
 		expect(changes).toEqual([]);
 		expect(keyAt(fixed, 'a', '1:AM')).toBe('sick');
 		expect(keyAt(fixed, 'b', '1:AM')).toBe('not_working');
+		expect(keyAt(fixed, 'c', '1:AM')).toBe('annual_leave');
+		expect(keyAt(fixed, 'd', '1:AM')).toBe('minor_surgery');
 	});
 
 	it('spreads duty proportionately to sessions worked', () => {

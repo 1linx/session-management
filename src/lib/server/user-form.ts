@@ -13,6 +13,7 @@ export type UserFormValues = {
 	category: string;
 	standardSlots: StandardSlots;
 	canWorkRatho: boolean;
+	leaveEntitlement: number;
 	displayOrder: number;
 	onRota: boolean;
 	active: boolean;
@@ -40,6 +41,7 @@ export function parseUserForm(data: FormData): UserFormResult {
 		category: String(data.get('category') ?? ''),
 		standardSlots,
 		canWorkRatho: data.get('canWorkRatho') === 'on',
+		leaveEntitlement: Number(data.get('leaveEntitlement') ?? 0),
 		displayOrder: Number(data.get('displayOrder') ?? 0),
 		onRota: data.get('onRota') === 'on',
 		active: data.get('active') === 'on',
@@ -60,6 +62,13 @@ export function parseUserForm(data: FormData): UserFormResult {
 	}
 	if (!Number.isInteger(values.displayOrder)) {
 		return invalid('Rota order must be a whole number.');
+	}
+	if (
+		!Number.isInteger(values.leaveEntitlement) ||
+		values.leaveEntitlement < 0 ||
+		values.leaveEntitlement > 999
+	) {
+		return invalid('Annual leave entitlement must be a whole number of sessions (0–999).');
 	}
 	if (values.password && values.password.length < 8) {
 		return invalid('Passwords must be at least 8 characters.');

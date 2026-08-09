@@ -41,29 +41,52 @@ export function roleChip(role: string | null): string {
 }
 
 /**
+ * The ways a session can be "not working". Everything here makes the person
+ * unavailable to the rota — the rules engine and Auto-fix only ever count
+ * status === 'working'. Add new unavailable states here.
+ */
+export const OFF_STATUSES = [
+	{ value: 'not_working', label: 'Not working' },
+	{ value: 'sick', label: 'Off sick' },
+	{ value: 'annual_leave', label: 'Annual leave' },
+	{ value: 'admin_work', label: 'Admin work' },
+	{ value: 'minor_surgery', label: 'Minor surgery' },
+	{ value: 'special', label: 'Special activity' }
+] as const;
+
+export type OffStatus = (typeof OFF_STATUSES)[number]['value'];
+
+export function isOffStatus(value: string): value is OffStatus {
+	return OFF_STATUSES.some((s) => s.value === value);
+}
+
+/**
  * The full state of one session cell: a status plus its sub-choices.
  * The picker, save validation, rules engine and export all derive from this.
  */
 export type CellValue = {
-	status: 'working' | 'not_working' | 'sick';
+	status: 'working' | OffStatus;
 	location: LocationValue | null;
 	role: SessionRole | null;
 };
 
 export const NOT_WORKING: CellValue = { status: 'not_working', location: null, role: null };
-export const OFF_SICK: CellValue = { status: 'sick', location: null, role: null };
 
-/** Wire format for a cell, e.g. "working:ratho:duty", "not_working", "sick". */
+/** Map a raw stored status string to a valid CellValue status. */
+export function statusFromDb(raw: string): CellValue['status'] {
+	if (raw === 'working') return 'working';
+	return isOffStatus(raw) ? raw : 'not_working';
+}
+
+/** Wire format for a cell, e.g. "working:ratho:duty", "annual_leave", "sick". */
 export function encodeCell(cell: CellValue): string {
-	if (cell.status === 'sick') return 'sick';
-	if (cell.status !== 'working') return 'not_working';
+	if (cell.status !== 'working') return cell.status;
 	return `working:${cell.location ?? DEFAULT_LOCATION}${cell.role ? `:${cell.role}` : ''}`;
 }
 
 /** Parse and validate a wire-format cell key. Returns null for anything invalid. */
 export function decodeCell(key: string): CellValue | null {
-	if (key === 'not_working') return { ...NOT_WORKING };
-	if (key === 'sick') return { ...OFF_SICK };
+	if (isOffStatus(key)) return { status: key, location: null, role: null };
 	const [status, location, ...rest] = key.split(':');
 	if (status !== 'working' || !location || !isLocation(location)) return null;
 	if (rest.length === 0) return { status: 'working', location, role: null };
@@ -76,12 +99,13 @@ export function decodeCell(key: string): CellValue | null {
 /**
  * Human label, matching the established spreadsheet wording: the default
  * location stays implicit ("Working"), everything else parenthesised —
- * "Working (Ratho)", "Working (Duty)", "Working (Ratho, Duty)",
- * "Working (Duty team)", "Working (House visits)", "Off sick".
+ * "Working (Ratho)", "Working (Duty)", "Working (Ratho, Duty)". Unavailable
+ * states use their own labels: "Off sick", "Annual leave", …
  */
 export function cellLabel(cell: CellValue): string {
-	if (cell.status === 'sick') return 'Off sick';
-	if (cell.status !== 'working') return 'Not working';
+	if (cell.status !== 'working') {
+		return OFF_STATUSES.find((s) => s.value === cell.status)?.label ?? 'Not working';
+	}
 	const extras = [
 		cell.location && cell.location !== DEFAULT_LOCATION ? locationLabel(cell.location) : null,
 		cell.role ? roleChip(cell.role) : null
@@ -108,22 +132,15 @@ export const CELL_OPTIONS: CellOption[] = [
 	'working:east_calder:house_visits',
 	'working:ratho',
 	'working:ratho:duty',
-	'not_working',
-	'sick'
+	...OFF_STATUSES.map((s) => s.value)
 ].map((key) => {
 	const value = decodeCell(key)!;
 	return {
 		key,
 		value,
 		label: cellLabel(value),
-		pickerLabel:
-			value.status === 'sick'
-				? 'Off sick'
-				: value.status !== 'working'
-					? 'Not working'
-					: locationLabel(value.location),
-		group:
-			value.status === 'working' ? locationLabel(value.location) : 'Not working'
+		pickerLabel: value.status === 'working' ? locationLabel(value.location) : cellLabel(value),
+		group: value.status === 'working' ? locationLabel(value.location) : 'Not available'
 	};
 });
 

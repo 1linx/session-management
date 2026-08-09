@@ -17,6 +17,7 @@ const validFields = {
 	'slot:1:AM': 'east_calder',
 	'slot:3:PM': 'ratho',
 	canWorkRatho: 'on',
+	leaveEntitlement: '56',
 	displayOrder: '20',
 	onRota: 'on',
 	active: 'on',
@@ -35,6 +36,7 @@ describe('parseUserForm', () => {
 			category: 'anp',
 			standardSlots: { '1:AM': 'east_calder', '3:PM': 'ratho' },
 			canWorkRatho: true,
+			leaveEntitlement: 56,
 			displayOrder: 20,
 			onRota: true,
 			active: true
@@ -81,6 +83,8 @@ describe('parseUserForm', () => {
 		['unknown role', { role: 'superadmin' }],
 		['unknown category', { category: 'nurse' }],
 		['non-integer display order', { displayOrder: '1.5' }],
+		['negative leave entitlement', { leaveEntitlement: '-1' }],
+		['fractional leave entitlement', { leaveEntitlement: '10.5' }],
 		['short password', { password: 'short' }]
 	])('rejects %s', (_label, overrides) => {
 		const result = parseUserForm(form({ ...validFields, ...overrides }));

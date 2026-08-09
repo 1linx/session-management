@@ -33,6 +33,8 @@ export const users = sqliteTable('users', {
 	standardSlots: text('working_slots').notNull().default('{}'),
 	/** Whether this person can be sent to Ratho when cover is needed. */
 	canWorkRatho: integer('can_work_ratho', { mode: 'boolean' }).notNull().default(false),
+	/** Annual leave entitlement in sessions per leave year (half a day = 1). */
+	leaveEntitlement: integer('leave_entitlement').notNull().default(0),
 	/** Column order on the rota and in the exported spreadsheet */
 	displayOrder: integer('display_order').notNull().default(0),
 	/** Whether this person appears as a column on the rota/spreadsheet

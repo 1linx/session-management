@@ -18,6 +18,7 @@ export const load: PageServerLoad = async ({ params }) => {
 			category: users.category,
 			standardSlots: users.standardSlots,
 			canWorkRatho: users.canWorkRatho,
+			leaveEntitlement: users.leaveEntitlement,
 			displayOrder: users.displayOrder,
 			onRota: users.onRota,
 			active: users.active
@@ -85,6 +86,7 @@ export const actions: Actions = {
 					category: values.category,
 					standardSlots: JSON.stringify(values.standardSlots),
 					canWorkRatho: values.canWorkRatho,
+					leaveEntitlement: values.leaveEntitlement,
 					displayOrder: values.displayOrder,
 					onRota: values.onRota,
 					active: values.active,

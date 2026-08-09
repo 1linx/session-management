@@ -6,6 +6,7 @@ import {
 	PERIODS,
 	WEEKDAYS,
 	cellLabel,
+	statusFromDb,
 	type LocationValue,
 	type SessionRole
 } from '$lib/constants';
@@ -48,8 +49,7 @@ export const GET: RequestHandler = async ({ url }) => {
 		grid.set(
 			`${entry.userId}:${entry.weekday}:${entry.period}`,
 			cellLabel({
-				status:
-					entry.status === 'working' ? 'working' : entry.status === 'sick' ? 'sick' : 'not_working',
+				status: statusFromDb(entry.status),
 				location: (entry.location as LocationValue | null) ?? null,
 				role: (entry.role as SessionRole | null) ?? null
 			})

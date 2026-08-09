@@ -144,6 +144,27 @@ describe('rota save action', () => {
 		expect(await entryInDb(user.id, 2, 'AM')).toMatchObject({ role: 'house_visits' });
 	});
 
+	it('saves the unavailable statuses (leave, admin work, surgery, special)', async () => {
+		const admin = await createUser({ role: 'admin' });
+		const user = await createUser();
+
+		await actions.save(
+			saveEvent(
+				{
+					[`cell:${user.id}:1:AM`]: 'annual_leave',
+					[`cell:${user.id}:1:PM`]: 'admin_work',
+					[`cell:${user.id}:2:AM`]: 'minor_surgery',
+					[`cell:${user.id}:2:PM`]: 'special'
+				},
+				adminLocals(admin.id)
+			)
+		);
+		expect(await entryInDb(user.id, 1, 'AM')).toMatchObject({ status: 'annual_leave' });
+		expect(await entryInDb(user.id, 1, 'PM')).toMatchObject({ status: 'admin_work' });
+		expect(await entryInDb(user.id, 2, 'AM')).toMatchObject({ status: 'minor_surgery' });
+		expect(await entryInDb(user.id, 2, 'PM')).toMatchObject({ status: 'special' });
+	});
+
 	it('saves duty and location sub-choices', async () => {
 		const admin = await createUser({ role: 'admin' });
 		const user = await createUser({ standardSlots: slotsAt(['1:AM', '1:PM']) });
