@@ -16,6 +16,12 @@
 
 	--shadow-brutal: 4px 4px 0 0 var(--color-ink);
 	--shadow-brutal-sm: 2px 2px 0 0 var(--color-ink);
+
+	/* Extra-small text steps below Tailwind's text-xs (0.75rem) */
+	--text-xxs: 0.625rem; /* 10px */
+	--text-xxs--line-height: 0.875rem;
+	--text-xxxs: 0.5rem; /* 8px — use sparingly, it's at the edge of legibility */
+	--text-xxxs--line-height: 0.75rem;
 }
 
 /* Rota rows that break a staffing rule. Drawn as inset strips per cell

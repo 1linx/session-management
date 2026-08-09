@@ -189,7 +189,7 @@
 	{#if cell.status === 'working'}
 		<span class="font-bold">{locationLabel(cell.location)}</span>
 		{#if cell.role}
-			<span class="ml-1 inline-block bg-ink px-1.5 py-0.5 align-middle text-[10px] font-bold tracking-widest text-white uppercase">
+			<span class="ml-1 inline-block bg-ink px-1.5 py-0.5 align-middle text-xxs font-bold tracking-widest text-white uppercase">
 				{roleChip(cell.role)}
 			</span>
 		{/if}
@@ -216,7 +216,7 @@
 	<h2 class="border-2 border-ink bg-lilac px-4 py-1.5 font-black uppercase shadow-brutal-sm">
 		Week commencing {weekLabel(data.week)}
 		{#if data.week === data.currentWeek}
-			<span class="ml-1 bg-ink px-1.5 py-0.5 text-[10px] tracking-widest text-white">This week</span>
+			<span class="ml-1 bg-ink px-1.5 py-0.5 text-xxs tracking-widest text-white">This week</span>
 		{/if}
 	</h2>
 	<a href={`/?week=${nextWeek}`} class="nb-btn nb-btn-secondary px-3 py-1.5" data-sveltekit-noscroll>
@@ -309,7 +309,7 @@
 					{#each data.rotaUsers as user (user.id)}
 						<th scope="col" class="border-2 border-ink bg-accent px-3 py-2 text-center">
 							<span class="block text-base font-black">{user.initials}</span>
-							<span class="block text-xs font-bold uppercase">{categoryLabel(user.category)}</span>
+							<span class="block text-xxs font-bold uppercase">{categoryLabel(user.category)}</span>
 						</th>
 					{/each}
 				</tr>
@@ -417,9 +417,9 @@
 					{#each problems[row.slot] ?? [] as problem (problem.message)}
 						<dd class="ml-4">
 							{#if problem.severity === 'error'}
-								<span class="mr-1 inline-block bg-red-600 px-1 text-[10px] font-bold tracking-widest text-white uppercase">Rule</span>
+								<span class="mr-1 inline-block bg-red-600 px-1 text-xxs font-bold tracking-widest text-white uppercase">Rule</span>
 							{:else}
-								<span class="mr-1 inline-block bg-ink px-1 text-[10px] font-bold tracking-widest text-white uppercase">Note</span>
+								<span class="mr-1 inline-block bg-ink px-1 text-xxs font-bold tracking-widest text-white uppercase">Note</span>
 							{/if}
 							{problem.message}
 						</dd>
@@ -468,10 +468,10 @@
 		</li>
 		<li>
 			<span class="inline-block border-2 border-ink bg-white px-2 py-0.5 font-bold">
-				<span class="mr-1 inline-block bg-ink px-1.5 py-0.5 align-middle text-[10px] font-bold tracking-widest text-white uppercase">Duty</span>
+				<span class="mr-1 inline-block bg-ink px-1.5 py-0.5 align-middle text-xxs font-bold tracking-widest text-white uppercase">Duty</span>
 				Duty doctor
-				<span class="mx-1 inline-block bg-ink px-1.5 py-0.5 align-middle text-[10px] font-bold tracking-widest text-white uppercase">Duty team</span>
-				<span class="mr-1 inline-block bg-ink px-1.5 py-0.5 align-middle text-[10px] font-bold tracking-widest text-white uppercase">Visits</span>
+				<span class="mx-1 inline-block bg-ink px-1.5 py-0.5 align-middle text-xxs font-bold tracking-widest text-white uppercase">Duty team</span>
+				<span class="mr-1 inline-block bg-ink px-1.5 py-0.5 align-middle text-xxs font-bold tracking-widest text-white uppercase">Visits</span>
 				House visits
 			</span>
 		</li>
@@ -545,7 +545,7 @@
 						<span>
 							{option.pickerLabel}
 							{#if option.value.role}
-								<span class="ml-1 inline-block bg-ink px-1.5 py-0.5 align-middle text-[10px] font-bold tracking-widest text-white uppercase">
+								<span class="ml-1 inline-block bg-ink px-1.5 py-0.5 align-middle text-xxs font-bold tracking-widest text-white uppercase">
 									{roleChip(option.value.role)}
 								</span>
 							{/if}
