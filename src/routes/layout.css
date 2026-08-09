@@ -12,6 +12,7 @@
 	--color-coral: #fda4af;
 
 	--color-danger: #dc2626;
+	--color-navy: #003b72;
 
 	--shadow-brutal: 4px 4px 0 0 var(--color-ink);
 	--shadow-brutal-sm: 2px 2px 0 0 var(--color-ink);
@@ -48,6 +49,11 @@ tr.rule-fail > td:has(button:hover) {
 	:focus-visible {
 		outline: 3px solid var(--color-ink);
 		outline-offset: 2px;
+	}
+
+	/* The header is navy — a black focus ring would disappear on it. */
+	header :focus-visible {
+		outline-color: #ffffff;
 	}
 
 	body {

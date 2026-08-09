@@ -45,9 +45,9 @@
 {/if}
 
 {#if data.user}
-	<header class="border-b-2 border-ink bg-lilac">
+	<header class="border-b-2 border-ink bg-navy">
 		<div class="flex flex-wrap items-center gap-4 px-2 py-3 sm:px-3">
-			<span class="text-xl font-black tracking-tight uppercase">Session Manager - ECMP</span>
+			<span class="text-xl font-black tracking-tight text-white uppercase">Session Manager - ECMP</span>
 			<nav aria-label="Main">
 				<ul class="flex flex-wrap items-center gap-2">
 					{#each navLinks as link (link.href)}
@@ -57,7 +57,7 @@
 								aria-current={page.url.pathname === link.href ? 'page' : undefined}
 								class="inline-block border-2 border-ink px-3 py-1 text-sm font-bold uppercase {page.url
 									.pathname === link.href
-									? 'bg-ink text-white'
+									? 'bg-accent'
 									: 'bg-white shadow-brutal-sm'}"
 							>
 								{link.label}
@@ -67,9 +67,9 @@
 				</ul>
 			</nav>
 			<div class="ms-auto flex items-center gap-3">
-				<span class="text-sm font-bold">
+				<span class="text-sm font-bold text-white">
 					{data.user.name}
-					<span class="ml-1 border-2 border-ink bg-white px-1.5 py-0.5 text-xs uppercase">
+					<span class="ml-1 border-2 border-ink bg-white px-1.5 py-0.5 text-xs text-ink uppercase">
 						{data.user.role}
 					</span>
 				</span>
