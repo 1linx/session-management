@@ -18,6 +18,12 @@
 		return () => channel.close();
 	});
 
+	/** Tab is active on its page and any subpage (e.g. /users/<id>). */
+	function isActive(href: string): boolean {
+		if (href === '/') return page.url.pathname === '/';
+		return page.url.pathname === href || page.url.pathname.startsWith(`${href}/`);
+	}
+
 	// Viewers only have the rota, so they get no tabs at all.
 	const navLinks = $derived(
 		data.user?.role === 'admin'
@@ -56,9 +62,10 @@
 						<li>
 							<a
 								href={link.href}
-								aria-current={page.url.pathname === link.href ? 'page' : undefined}
-								class="inline-block border-2 border-ink px-3 py-1 text-sm font-bold uppercase {page.url
-									.pathname === link.href
+								aria-current={isActive(link.href) ? 'page' : undefined}
+								class="inline-block border-2 border-ink px-3 py-1 text-sm font-bold uppercase {isActive(
+									link.href
+								)
 									? 'bg-accent'
 									: 'bg-white shadow-brutal-sm'}"
 							>
