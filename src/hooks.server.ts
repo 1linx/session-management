@@ -16,11 +16,9 @@ export const handle: Handle = async ({ event, resolve }) => {
 		redirect(303, '/');
 	}
 
-	// Admin-only sections.
-	if (
-		(path.startsWith('/users') || path.startsWith('/settings')) &&
-		event.locals.user?.role !== 'admin'
-	) {
+	// Admin-only sections. Viewers only get the rota (and its export).
+	const adminOnly = ['/users', '/settings', '/absences', '/raw'];
+	if (adminOnly.some((p) => path.startsWith(p)) && event.locals.user?.role !== 'admin') {
 		redirect(303, '/');
 	}
 

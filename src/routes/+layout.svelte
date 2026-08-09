@@ -18,17 +18,18 @@
 		return () => channel.close();
 	});
 
-	const navLinks = $derived([
-		{ href: '/', label: 'Rota' },
-		{ href: '/absences', label: 'Absences' },
-		...(data.user?.role === 'admin'
+	// Viewers only have the rota, so they get no tabs at all.
+	const navLinks = $derived(
+		data.user?.role === 'admin'
 			? [
+					{ href: '/', label: 'Rota' },
+					{ href: '/absences', label: 'Absences' },
 					{ href: '/users', label: 'Users' },
-					{ href: '/settings', label: 'Staffing rules' }
+					{ href: '/settings', label: 'Staffing rules' },
+					{ href: '/raw', label: 'Raw data' }
 				]
-			: []),
-		{ href: '/raw', label: 'Raw data' }
-	]);
+			: []
+	);
 </script>
 
 <svelte:head><link rel="icon" href={favicon} /></svelte:head>
@@ -48,8 +49,9 @@
 	<header class="border-b-2 border-ink bg-navy">
 		<div class="flex flex-wrap items-center gap-4 px-2 py-3 sm:px-3">
 			<span class="text-xl font-black tracking-tight text-white uppercase">Session Manager</span>
-			<nav aria-label="Main">
-				<ul class="flex flex-wrap items-center gap-2">
+			{#if navLinks.length > 0}
+				<nav aria-label="Main">
+					<ul class="flex flex-wrap items-center gap-2">
 					{#each navLinks as link (link.href)}
 						<li>
 							<a
@@ -64,8 +66,9 @@
 							</a>
 						</li>
 					{/each}
-				</ul>
-			</nav>
+					</ul>
+				</nav>
+			{/if}
 			<div class="ms-auto flex items-center gap-3">
 				<span class="text-sm font-bold text-white">
 					{data.user.name}
