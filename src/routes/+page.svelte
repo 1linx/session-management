@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { tick } from 'svelte';
 	import { enhance } from '$app/forms';
 	import { beforeNavigate } from '$app/navigation';
 	import {
@@ -118,22 +119,52 @@
 		autofixChanges = changes.map((c) => `${c.initials}, ${slotLabel(c.slot)}: ${c.reason}`);
 	}
 
-	// --- Status picker dialog ---
+	// --- Status picker dialog (two stages: pick a group, then the detail) ---
 	let dialog = $state<HTMLDialogElement>();
-	let picker = $state<{ cellKey: string; title: string } | null>(null);
+	let dialogBody = $state<HTMLElement>();
+	let picker = $state<{ cellKey: string; title: string; group: string | null } | null>(null);
 
 	function openPicker(user: { id: string; initials: string }, row: (typeof rows)[number]) {
 		picker = {
 			cellKey: `${user.id}|${row.slot}`,
-			title: `${user.initials} — ${row.label}`
+			title: `${user.initials} — ${row.label}`,
+			group: null // stage 1: choose East Calder / Ratho / Not available
 		};
 		dialog?.showModal();
+	}
+
+	async function focusFirstOption() {
+		await tick();
+		dialogBody?.querySelector('button')?.focus();
+	}
+
+	function chooseGroup(group: string) {
+		if (!picker) return;
+		picker = { ...picker, group };
+		focusFirstOption();
+	}
+
+	function backToGroups() {
+		if (!picker) return;
+		picker = { ...picker, group: null };
+		focusFirstOption();
 	}
 
 	function choose(key: string) {
 		if (picker) cellValues[picker.cellKey] = key;
 		dialog?.close(); // native <dialog> returns focus to the cell button
 	}
+
+	/** The group the cell's current value belongs to, for the ✓ hint on stage 1. */
+	function groupOf(key: string): string | undefined {
+		return CELL_OPTIONS.find((o) => o.key === key)?.group;
+	}
+
+	const groupClasses: Record<string, string> = {
+		'East Calder': 'bg-mint',
+		Ratho: 'bg-sky',
+		'Not available': 'bg-white'
+	};
 
 	function classesFor(key: string): string {
 		const cell = decodeCell(key);
@@ -455,13 +486,18 @@
 
 <dialog
 	bind:this={dialog}
-	class="m-auto w-full max-w-sm border-4 border-ink bg-paper p-0 shadow-brutal backdrop:bg-ink/60"
+	class="m-auto w-[min(100%-1.5rem,24rem)] border-4 border-ink bg-paper p-0 shadow-brutal backdrop:bg-ink/60"
 	onclose={() => (picker = null)}
 >
 	{#if picker}
 		{@const current = cellValues[picker.cellKey] ?? 'not_working'}
 		<div class="flex items-center justify-between gap-4 border-b-2 border-ink bg-lilac px-4 py-3">
-			<h2 class="font-black uppercase">{picker.title}</h2>
+			<h2 class="font-black uppercase">
+				{picker.title}
+				{#if picker.group}
+					<span class="block text-xs font-bold tracking-widest">{picker.group}</span>
+				{/if}
+			</h2>
 			<button
 				type="button"
 				class="cursor-pointer border-2 border-ink bg-white px-2 py-0.5 font-bold shadow-brutal-sm"
@@ -471,38 +507,55 @@
 				✕
 			</button>
 		</div>
-		<div class="flex max-h-[80vh] flex-col gap-4 overflow-y-auto p-4">
-			{#each CELL_OPTION_GROUPS as group (group)}
-				<div>
-					<h3 class="mb-2 text-xs font-bold tracking-widest uppercase">{group}</h3>
-					<ul class="flex flex-col gap-2.5">
-						{#each CELL_OPTIONS.filter((o) => o.group === group) as option (option.key)}
-							<li>
-								<button
-									type="button"
-									aria-pressed={current === option.key}
-									class="flex w-full cursor-pointer items-center justify-between border-2 border-ink px-3 py-2 text-left font-bold shadow-brutal-sm hover:-translate-x-0.5 hover:-translate-y-0.5 {classesFor(
-										option.key
-									)}"
-									onclick={() => choose(option.key)}
-								>
-									<span>
-										{option.pickerLabel}
-										{#if option.value.role}
-											<span class="ml-1 inline-block bg-ink px-1.5 py-0.5 align-middle text-[10px] font-bold tracking-widest text-white uppercase">
-												{roleChip(option.value.role)}
-											</span>
-										{/if}
-									</span>
-									{#if current === option.key}
-										<span class="text-xs uppercase">✓ Current</span>
-									{/if}
-								</button>
-							</li>
-						{/each}
-					</ul>
-				</div>
-			{/each}
+		<div class="flex max-h-[80vh] flex-col gap-2.5 overflow-y-auto p-4" bind:this={dialogBody}>
+			{#if picker.group === null}
+				<h3 class="sr-only">Step 1 of 2: where are they?</h3>
+				{#each CELL_OPTION_GROUPS as group (group)}
+					<button
+						type="button"
+						class="flex w-full cursor-pointer items-center justify-between border-2 border-ink px-3 py-3 text-left font-bold shadow-brutal-sm hover:-translate-x-0.5 hover:-translate-y-0.5 {groupClasses[
+							group
+						] ?? 'bg-white'}"
+						onclick={() => chooseGroup(group)}
+					>
+						<span>{group}</span>
+						<span class="text-xs uppercase">
+							{#if groupOf(current) === group}✓ Current ·{/if} →
+						</span>
+					</button>
+				{/each}
+			{:else}
+				<h3 class="sr-only">Step 2 of 2: {picker.group} options</h3>
+				<button
+					type="button"
+					class="mb-1 flex w-fit cursor-pointer items-center gap-1 border-2 border-ink bg-white px-2 py-1 text-xs font-bold uppercase shadow-brutal-sm"
+					onclick={backToGroups}
+				>
+					← Back
+				</button>
+				{#each CELL_OPTIONS.filter((o) => o.group === picker?.group) as option (option.key)}
+					<button
+						type="button"
+						aria-pressed={current === option.key}
+						class="flex w-full cursor-pointer items-center justify-between border-2 border-ink px-3 py-2.5 text-left font-bold shadow-brutal-sm hover:-translate-x-0.5 hover:-translate-y-0.5 {classesFor(
+							option.key
+						)}"
+						onclick={() => choose(option.key)}
+					>
+						<span>
+							{option.pickerLabel}
+							{#if option.value.role}
+								<span class="ml-1 inline-block bg-ink px-1.5 py-0.5 align-middle text-[10px] font-bold tracking-widest text-white uppercase">
+									{roleChip(option.value.role)}
+								</span>
+							{/if}
+						</span>
+						{#if current === option.key}
+							<span class="text-xs uppercase">✓ Current</span>
+						{/if}
+					</button>
+				{/each}
+			{/if}
 		</div>
 	{/if}
 </dialog>
