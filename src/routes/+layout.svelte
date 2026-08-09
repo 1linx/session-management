@@ -47,7 +47,7 @@
 {#if data.user}
 	<header class="border-b-2 border-ink bg-navy">
 		<div class="flex flex-wrap items-center gap-4 px-2 py-3 sm:px-3">
-			<span class="text-xl font-black tracking-tight text-white uppercase">Session Manager - ECMP</span>
+			<span class="text-xl font-black tracking-tight text-white uppercase">Session Manager</span>
 			<nav aria-label="Main">
 				<ul class="flex flex-wrap items-center gap-2">
 					{#each navLinks as link (link.href)}
