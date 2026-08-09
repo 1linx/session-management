@@ -39,9 +39,14 @@ npm run db:snapshot                     # or: node scripts/snapshot.js --with-pa
 This writes `scripts/seed-data.json`, which `db:seed` prefers from then on
 (no rota entries are captured — weeks start empty). Without
 `--with-passwords`, reseeded users all get the password `changeme`; with it,
-everyone keeps their login. Commit the file to make it the team default —
-but note that with password hashes included it belongs in a **private**
-repo only.
+everyone keeps their login.
+
+The file contains real staff names, so it is **gitignored, never committed**.
+Copy it to the server by hand before reseeding there:
+
+```sh
+scp scripts/seed-data.json foundry:session-management/scripts/
+```
 
 ## Concepts
 

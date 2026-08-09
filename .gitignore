@@ -51,3 +51,6 @@ ecosystem.config.cjs
 
 # Local deploy helper (not committed)
 deploy.sh
+
+# Real staff data — never committed; scp to the server manually
+scripts/seed-data.json
