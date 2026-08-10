@@ -12,7 +12,9 @@
  *  R3  East Calder duty team must meet the configured minimum per session
  *      (error) and ideally the desirable number (warning). ANPs working at
  *      East Calder are always on the duty team — one that isn't marked as
- *      such is flagged (warning; Auto-fix corrects it).
+ *      such is flagged (warning; Auto-fix corrects it). The per-user AM/PM
+ *      duty exemption covers the duty team too: an exempt member on it is
+ *      an error, and exempt ANPs aren't expected to join.
  *  R4  East Calder house visits must meet the configured allocation per
  *      session, and only GPs/trainees may be allocated.
  *  R5  Duty team and house visits are East Calder concepts — flagged at
@@ -135,8 +137,18 @@ export function validateWeek(
 				message: `East Calder: duty team has ${team.length}, below the desirable ${teamDesired}`
 			});
 		}
+		const exemptTeam = team.filter((v) => v.member.dutyExempt[slotPeriod(slot)]);
+		if (exemptTeam.length > 0) {
+			found.push({
+				severity: 'error',
+				message: `East Calder: excluded from ${slotPeriod(slot)} duty team (${names(exemptTeam)})`
+			});
+		}
 		const unmarkedAnps = ec.filter(
-			(v) => v.member.category === 'anp' && v.cell.role !== 'duty_team'
+			(v) =>
+				v.member.category === 'anp' &&
+				v.cell.role !== 'duty_team' &&
+				!v.member.dutyExempt[slotPeriod(slot)]
 		);
 		if (unmarkedAnps.length > 0) {
 			found.push({

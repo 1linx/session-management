@@ -23,12 +23,15 @@ const trainee = (id: string): StaffMember => ({
 	dutyExempt: { AM: false, PM: false },
 	standardSlots: {}
 });
-const anp = (id: string): StaffMember => ({
+const anp = (
+	id: string,
+	dutyExempt: StaffMember['dutyExempt'] = { AM: false, PM: false }
+): StaffMember => ({
 	id,
 	initials: id.toUpperCase(),
 	category: 'anp',
 	canWorkRatho: false,
-	dutyExempt: { AM: false, PM: false },
+	dutyExempt,
 	standardSlots: {}
 });
 
@@ -228,6 +231,37 @@ describe('R3 — East Calder duty team', () => {
 				(p) => p.severity === 'warning' && p.message.includes('ANPs always join the duty team')
 			)
 		).toBe(true);
+	});
+
+	it('duty exemption covers the duty team', () => {
+		const noPm = anp('n', { AM: false, PM: true });
+		// On the team in an excluded period → error.
+		const onTeam = validateWeek(
+			[gp('a'), noPm],
+			grid({
+				a: { '1:PM': 'working:east_calder:duty' },
+				n: { '1:PM': 'working:east_calder:duty_team' }
+			}),
+			settings()
+		);
+		expect(
+			onTeam['1:PM'].some(
+				(p) => p.severity === 'error' && p.message.includes('excluded from PM duty team (N)')
+			)
+		).toBe(true);
+
+		// Routine in an excluded period → no "always join" warning.
+		const routine = validateWeek(
+			[gp('a'), noPm],
+			grid({
+				a: { '1:PM': 'working:east_calder:duty' },
+				n: { '1:PM': 'working:east_calder' }
+			}),
+			settings()
+		);
+		expect(
+			(routine['1:PM'] ?? []).some((p) => p.message.includes('always join the duty team'))
+		).toBe(false);
 	});
 
 	it('does not expect Ratho ANPs to be on the duty team', () => {

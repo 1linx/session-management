@@ -17,7 +17,7 @@ export type StaffMember = {
 	category: string;
 	/** May Auto-fix relocate them to Ratho? */
 	canWorkRatho: boolean;
-	/** Periods in which they may never be the duty doctor. */
+	/** Periods in which they may never hold duty (duty doctor or EC duty team). */
 	dutyExempt: Record<Period, boolean>;
 	/**
 	 * Standard availability (slot → practice). Auto-fix uses it to bring an

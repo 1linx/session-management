@@ -144,7 +144,7 @@
 			Can be sent to Ratho if cover is required (used by Auto-fix)
 		</label>
 		<div class="mt-4">
-			<span class="nb-label">Excluded from duty doctor</span>
+			<span class="nb-label">Excluded from duty</span>
 			<div class="flex flex-wrap gap-6">
 				<label class="flex items-center gap-2 font-bold">
 					<input
@@ -166,8 +166,8 @@
 				</label>
 			</div>
 			<p class="mt-1 text-sm">
-				Auto-fix will never assign them duty in an excluded session, and validation flags it
-				if set by hand.
+				Covers duty doctor and the East Calder duty team. Auto-fix will never assign either
+				in an excluded session, and validation flags it if set by hand.
 			</p>
 		</div>
 	</fieldset>

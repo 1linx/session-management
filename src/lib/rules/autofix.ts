@@ -15,8 +15,9 @@
  *      there per their standard sessions but left "Not working" — are
  *      ALWAYS on the duty team (whatever role their cell held), ahead of
  *      any GP; strip invalid roles elsewhere (duty team / house visits at
- *      Ratho; duty held by a non-GP or by a GP excluded from duty in that
- *      period; duplicate duty doctors — the fairest keeps it).
+ *      Ratho; duty held by a non-GP; duty or duty team held by someone
+ *      excluded from duty in that period — the AM/PM exemption covers
+ *      both; duplicate duty doctors — the fairest keeps it).
  *   2. Ensure one duty doctor at each practice. Candidates are routine GPs
  *      already working there who aren't excluded from duty that period; if
  *      Ratho has none, a routine East Calder GP with canWorkRatho (same
@@ -104,10 +105,23 @@ function fixSlot(ctx: Ctx, slot: string) {
 	// 1. Normalise roles.
 	for (const member of ctx.staff) {
 		const cell = cellOf(ctx, member.id, slot);
+		// The AM/PM duty exemption covers all duty work: duty doctor AND the
+		// East Calder duty team.
+		const exempt = member.dutyExempt[slotPeriod(slot)];
 		if (member.category === 'anp') {
-			// ANPs working at East Calder are always on the duty team.
+			// ANPs working at East Calder are always on the duty team — unless
+			// excluded from duty in this period, in which case they stay (or
+			// are put back) on routine.
 			if (cell.status === 'working' && cell.location === 'east_calder') {
-				if (cell.role !== 'duty_team') {
+				if (exempt && cell.role !== null) {
+					setCell(
+						ctx,
+						member,
+						slot,
+						{ ...cell, role: null },
+						`excluded from ${slotPeriod(slot)} duty`
+					);
+				} else if (!exempt && cell.role !== 'duty_team') {
 					setCell(
 						ctx,
 						member,
@@ -121,7 +135,7 @@ function fixSlot(ctx: Ctx, slot: string) {
 			// An available ANP left "Not working" is brought in — a blank cell
 			// in a session their standard availability covers at EC means
 			// "not yet rostered", not "off". Absence statuses stay untouched.
-			if (cell.status === 'not_working' && member.standardSlots[slot] === 'east_calder') {
+			if (cell.status === 'not_working' && member.standardSlots[slot] === 'east_calder' && !exempt) {
 				setCell(
 					ctx,
 					member,
@@ -138,7 +152,7 @@ function fixSlot(ctx: Ctx, slot: string) {
 			setCell(ctx, member, slot, { ...cell, role: null }, 'duty team/house visits only exist at East Calder');
 		} else if (cell.role === 'duty' && member.category !== 'doctor') {
 			setCell(ctx, member, slot, { ...cell, role: null }, 'duty doctor must be a GP');
-		} else if (cell.role === 'duty' && member.dutyExempt[slotPeriod(slot)]) {
+		} else if ((cell.role === 'duty' || cell.role === 'duty_team') && exempt) {
 			setCell(
 				ctx,
 				member,
@@ -213,7 +227,9 @@ function fixSlot(ctx: Ctx, slot: string) {
 	const team = () =>
 		workingAt(ctx, slot, 'east_calder').filter((m) => cellOf(ctx, m.id, slot).role === 'duty_team');
 	while (team().length < teamMin) {
-		const pick = routineClinicians(ctx, slot, 'east_calder')[0];
+		const pick = routineClinicians(ctx, slot, 'east_calder').filter(
+			(m) => !m.dutyExempt[slotPeriod(slot)]
+		)[0];
 		if (!pick) break;
 		// Moving them off routine must not break the routine minimum (duty
 		// GPs keep counting towards it, so only this pick drops out).

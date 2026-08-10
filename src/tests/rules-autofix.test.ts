@@ -16,12 +16,16 @@ const gp = (
 	dutyExempt,
 	standardSlots: {}
 });
-const anp = (id: string, standardSlots: StaffMember['standardSlots'] = {}): StaffMember => ({
+const anp = (
+	id: string,
+	standardSlots: StaffMember['standardSlots'] = {},
+	dutyExempt: StaffMember['dutyExempt'] = { AM: false, PM: false }
+): StaffMember => ({
 	id,
 	initials: id.toUpperCase(),
 	category: 'anp',
 	canWorkRatho: false,
-	dutyExempt: { AM: false, PM: false },
+	dutyExempt,
 	standardSlots
 });
 
@@ -274,6 +278,49 @@ describe('autoFixWeek', () => {
 		expect(keyAt(fixed, 'n', '1:AM')).toBe('working:east_calder:duty_team');
 		const teamGps = ['a', 'b', 'c'].filter((u) => fixed[u]['1:AM'].role === 'duty_team');
 		expect(teamGps).toHaveLength(1);
+	});
+
+	it('duty exemption covers the duty team: exempt members are stripped, not added', () => {
+		const s = settings();
+		s.dutyTeamMin['1:PM'] = 2;
+		// ANP n is excluded from PM duty and holds duty team; GP b likewise;
+		// ANP m is available (standard EC) but excluded, so is not brought in.
+		const staff = [
+			gp('a'),
+			gp('b', false, { AM: false, PM: true }),
+			anp('n', {}, { AM: false, PM: true }),
+			anp('m', { '1:PM': 'east_calder' }, { AM: false, PM: true })
+		];
+		const { grid: fixed } = autoFixWeek(
+			staff,
+			grid({
+				a: { '1:PM': 'working:east_calder' },
+				b: { '1:PM': 'working:east_calder:duty_team' },
+				n: { '1:PM': 'working:east_calder:duty_team' }
+			}),
+			s
+		);
+		expect(fixed['n']['1:PM'].role).toBeNull(); // stripped, not re-added
+		expect(fixed['b']['1:PM'].role).not.toBe('duty_team'); // stripped (takes duty instead)
+		expect(fixed['m']).toBeUndefined(); // not brought in
+	});
+
+	it('does not top up the duty team with a GP excluded that period', () => {
+		const s = settings();
+		s.dutyTeamMin['1:AM'] = 1;
+		const staff = [gp('a'), gp('b', false, { AM: true, PM: false })];
+		const { grid: fixed } = autoFixWeek(
+			staff,
+			grid({
+				a: { '1:AM': 'working:east_calder' },
+				b: { '1:AM': 'working:east_calder' }
+			}),
+			s
+		);
+		// a takes duty (b is excluded from AM duty); b must not be used for
+		// the team either — it stays unmet rather than using an exempt GP.
+		expect(fixed['a']['1:AM'].role).toBe('duty');
+		expect(fixed['b']['1:AM'].role).toBeNull();
 	});
 
 	it('tops the duty team up with GPs once the ANPs are on it', () => {
