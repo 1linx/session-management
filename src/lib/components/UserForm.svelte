@@ -66,24 +66,24 @@
 		</div>
 	</div>
 
+	<!-- Selects set `value` on the <select>, not `selected` per <option>: after a
+	     failed save, SvelteKit re-renders with form=null before re-applying the
+	     result, and per-option `selected` only updates the attribute — which the
+	     browser ignores on options the user has touched, wiping their choice. -->
 	<div class="grid gap-5 sm:grid-cols-2">
 		<div>
 			<label for="category" class="nb-label">Category</label>
-			<select id="category" name="category" class="nb-input">
+			<select id="category" name="category" value={values.category ?? 'doctor'} class="nb-input">
 				{#each USER_CATEGORIES as category (category.value)}
-					<option value={category.value} selected={category.value === (values.category ?? 'doctor')}>
-						{category.label}
-					</option>
+					<option value={category.value}>{category.label}</option>
 				{/each}
 			</select>
 		</div>
 		<div>
 			<label for="role" class="nb-label">User type</label>
-			<select id="role" name="role" class="nb-input">
+			<select id="role" name="role" value={values.role ?? 'viewer'} class="nb-input">
 				{#each USER_ROLES as role (role.value)}
-					<option value={role.value} selected={role.value === (values.role ?? 'viewer')}>
-						{role.label}
-					</option>
+					<option value={role.value}>{role.label}</option>
 				{/each}
 			</select>
 		</div>
@@ -117,17 +117,13 @@
 							<td class="px-3 py-1 text-center">
 								<select
 									name={`slot:${slot}`}
+									value={values.standardSlots?.[slot] ?? 'none'}
 									aria-label={`${day.label} ${period.label} practice`}
 									class="border-2 border-ink bg-white px-2 py-1"
 								>
-									<option value="none" selected={!values.standardSlots?.[slot]}>—</option>
+									<option value="none">—</option>
 									{#each LOCATIONS as location (location.value)}
-										<option
-											value={location.value}
-											selected={values.standardSlots?.[slot] === location.value}
-										>
-											{location.label}
-										</option>
+										<option value={location.value}>{location.label}</option>
 									{/each}
 								</select>
 							</td>
