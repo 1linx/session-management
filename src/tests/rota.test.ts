@@ -313,66 +313,9 @@ describe('rota save action', () => {
 	});
 });
 
-describe('useDefaults action', () => {
-	beforeEach(resetDb);
-
-	const defaultsEvent = (locals: object, week: string) =>
-		({ request: formRequest({ week }), locals }) as unknown as Parameters<
-			(typeof actions)['useDefaults']
-		>[0];
-
-	it('marks everyone Working (default location) on their standard availability', async () => {
-		const admin = await createUser({ role: 'admin', onRota: false });
-		const fullTimer = await createUser(); // all 10 slots
-		const morningsOnly = await createUser({ standardSlots: slotsAt(['1:AM', '2:AM']) });
-
-		const result = await actions.useDefaults(defaultsEvent(adminLocals(admin.id), thisWeek));
-		expect(result).toMatchObject({ defaulted: true });
-
-		const rows = await db
-			.select()
-			.from(scheduleEntries)
-			.where(eq(scheduleEntries.weekStart, thisWeek));
-		expect(rows).toHaveLength(12); // 10 + 2, nothing for the off-rota admin
-		expect(rows.every((r) => r.status === 'working' && r.location === 'east_calder' && r.role === null)).toBe(
-			true
-		);
-		expect(rows.filter((r) => r.userId === morningsOnly.id).map((r) => `${r.weekday}:${r.period}`).sort()).toEqual(
-			['1:AM', '2:AM']
-		);
-		expect(rows.some((r) => r.userId === fullTimer.id && r.weekday === 5 && r.period === 'PM')).toBe(true);
-	});
-
-	it('uses each slot’s standard practice', async () => {
-		const admin = await createUser({ role: 'admin', onRota: false });
-		const rathoDoc = await createUser({ standardSlots: slotsAt(['1:AM', '1:PM'], 'ratho') });
-
-		await actions.useDefaults(defaultsEvent(adminLocals(admin.id), thisWeek));
-
-		const rows = await db
-			.select()
-			.from(scheduleEntries)
-			.where(eq(scheduleEntries.userId, rathoDoc.id));
-		expect(rows).toHaveLength(2);
-		expect(rows.every((r) => r.location === 'ratho')).toBe(true);
-	});
-
-	it('refuses when the week already has entries', async () => {
-		const admin = await createUser({ role: 'admin' });
-		const user = await createUser();
-		await createEntry(user.id, 1, 'AM');
-
-		const result = await actions.useDefaults(defaultsEvent(adminLocals(admin.id), thisWeek));
-		expect(result).toMatchObject({ status: 400 });
-	});
-
-	it('refuses viewers', async () => {
-		const viewer = await createUser();
-		const result = await actions.useDefaults(defaultsEvent(viewerLocals(viewer.id), thisWeek));
-		expect(result).toMatchObject({ status: 403 });
-		expect(await db.select().from(scheduleEntries)).toHaveLength(0);
-	});
-});
+// "Use default values" is client-side (fills the grid as unsaved edits for a
+// manual Save) so it has no server action to test — the save action above
+// covers persisting what it fills in.
 
 describe('copyWeek action', () => {
 	beforeEach(resetDb);

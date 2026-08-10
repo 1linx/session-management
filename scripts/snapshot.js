@@ -8,7 +8,7 @@
  * bootstrapped with "Use default values" / "Copy previous week".
  *
  * Usage: node scripts/snapshot.js                  (passwords not captured;
- *                                                   reseeded users get 'changeme')
+ *                                                   reseeded users get 'eastcalder')
  *        node scripts/snapshot.js --with-passwords (capture password hashes so
  *                                                   reseeds keep everyone's login)
  */
@@ -64,5 +64,5 @@ const data = {
 
 writeFileSync(outPath, JSON.stringify(data, null, '\t') + '\n');
 console.log(
-	`Wrote ${outPath}: ${data.users.length} users${data.ruleSettings ? ' + staffing rules' : ' (no staffing rules configured)'}${withPasswords ? ', including password hashes' : ' — passwords NOT captured; reseeded users get "changeme"'}.`
+	`Wrote ${outPath}: ${data.users.length} users${data.ruleSettings ? ' + staffing rules' : ' (no staffing rules configured)'}${withPasswords ? ', including password hashes' : ' — passwords NOT captured; reseeded users get "eastcalder"'}.`
 );

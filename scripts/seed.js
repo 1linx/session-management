@@ -4,7 +4,7 @@
  * Two modes:
  *  - If scripts/seed-data.json exists (created by scripts/snapshot.js), it
  *    seeds those users and staffing rules — the real data set. Users whose
- *    snapshot has no password hash get the password "changeme".
+ *    snapshot has no password hash get the password "eastcalder".
  *  - Otherwise it falls back to the built-in sample: admin ADM plus the
  *    DR1–ANP2 rota from example.xlsx in the current week.
  *
@@ -52,7 +52,7 @@ function seedFromSnapshot(snapshot) {
 			if (!user.passwordHash) defaultPasswords += 1;
 			insertUser.run({
 				id: randomUUID(),
-				passwordHash: user.passwordHash ?? hashPassword('changeme'),
+				passwordHash: user.passwordHash ?? hashPassword('eastcalder'),
 				name: user.name,
 				initials: user.initials,
 				role: user.role,
@@ -76,7 +76,7 @@ function seedFromSnapshot(snapshot) {
 		`Seeded ${snapshot.users.length} users from ${snapshotPath} (captured ${snapshot.generatedAt})` +
 			`${snapshot.ruleSettings ? ' with staffing rules' : ''}.` +
 			(defaultPasswords > 0
-				? ` ${defaultPasswords} user(s) had no captured password — set to "changeme".`
+				? ` ${defaultPasswords} user(s) had no captured password — set to "eastcalder".`
 				: '')
 	);
 }
@@ -111,7 +111,7 @@ function seedSample() {
 	db.transaction(() => {
 		insertUser.run({
 			id: randomUUID(),
-			passwordHash: hashPassword('changeme-admin'),
+			passwordHash: hashPassword('eastcalder-admin'),
 			name: 'Administrator',
 			initials: 'ADM',
 			role: 'admin',
@@ -147,7 +147,7 @@ function seedSample() {
 			}
 			insertUser.run({
 				id: userId,
-				passwordHash: hashPassword('changeme'),
+				passwordHash: hashPassword('eastcalder'),
 				name: p.initials,
 				initials: p.initials,
 				role: 'viewer',
@@ -171,7 +171,7 @@ function seedSample() {
 		});
 	})();
 	console.log(
-		'Seeded SAMPLE data: admin ADM (password: changeme-admin) and 9 sample rota users, login = initials (password: changeme).'
+		'Seeded SAMPLE data: admin ADM (password: eastcalder-admin) and 9 sample rota users, login = initials (password: eastcalder).'
 	);
 }
 

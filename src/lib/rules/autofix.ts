@@ -27,7 +27,9 @@
  *      GPs/trainees (every EC ANP is already on it after step 1), never
  *      dropping routine clinicians below the configured minimum.
  *   4. Fill East Calder house visits: routine GPs/trainees only, same
- *      minimum-preserving constraint.
+ *      minimum-preserving constraint. GP trainees working at EC are
+ *      ALWAYS on house visits in AM sessions (step 1), and trainees on
+ *      visits count as half a GP, rounded down.
  *
  * Duty fairness: among candidates, the pick is the GP with the lowest
  * (duty sessions ÷ sessions worked) ratio within this week, so duty spreads
@@ -148,6 +150,24 @@ function fixSlot(ctx: Ctx, slot: string) {
 			}
 		}
 		if (cell.status !== 'working') continue;
+		// GP trainees working at East Calder always do house visits in AM
+		// sessions, whatever role their cell held.
+		if (
+			member.category === 'gp_trainee' &&
+			cell.location === 'east_calder' &&
+			slotPeriod(slot) === 'AM'
+		) {
+			if (cell.role !== 'house_visits') {
+				setCell(
+					ctx,
+					member,
+					slot,
+					{ status: 'working', location: 'east_calder', role: 'house_visits' },
+					'GP trainees do house visits in AM sessions'
+				);
+			}
+			continue;
+		}
 		if (cell.location === 'ratho' && (cell.role === 'duty_team' || cell.role === 'house_visits')) {
 			setCell(ctx, member, slot, { ...cell, role: null }, 'duty team/house visits only exist at East Calder');
 		} else if (cell.role === 'duty' && member.category !== 'doctor') {
@@ -243,14 +263,28 @@ function fixSlot(ctx: Ctx, slot: string) {
 		);
 	}
 
-	// 4. East Calder house visits — GPs/trainees only.
+	// 4. East Calder house visits — GPs/trainees only. Trainees count as
+	// half a GP, rounded down (2 trainees = 1 GP, 3 trainees still = 1).
 	const visitsRequired = ctx.settings.houseVisitsRequired[slot] ?? 0;
 	const visits = () =>
 		workingAt(ctx, slot, 'east_calder').filter(
 			(m) => cellOf(ctx, m.id, slot).role === 'house_visits'
 		);
-	while (visits().length < visitsRequired) {
-		const pick = routineClinicians(ctx, slot, 'east_calder')[0];
+	const visitsCount = () => {
+		const onVisits = visits();
+		const trainees = onVisits.filter((m) => m.category === 'gp_trainee').length;
+		return onVisits.filter((m) => m.category === 'doctor').length + Math.floor(trainees / 2);
+	};
+	while (visitsCount() < visitsRequired) {
+		const candidates = routineClinicians(ctx, slot, 'east_calder');
+		// GPs first (full credit); a trainee only if they complete a pair —
+		// a lone odd trainee would leave routine clinics for no gain.
+		const traineesOnVisits = visits().filter((m) => m.category === 'gp_trainee').length;
+		const routineTrainees = candidates.filter((m) => m.category === 'gp_trainee');
+		const traineeHelps = traineesOnVisits % 2 === 1 || routineTrainees.length >= 2;
+		const pick =
+			candidates.find((m) => m.category === 'doctor') ??
+			(traineeHelps ? routineTrainees[0] : undefined);
 		if (!pick) break;
 		if (routineMinCount(ctx, slot, 'east_calder') - 1 < ctx.settings.minRoutineClinicians.east_calder) break;
 		setCell(

@@ -125,6 +125,7 @@
 		</legend>
 		<p class="mb-4 text-sm">
 			GP/trainee allocations required for house visits (12–1pm and 2–3pm) per session.
+			Trainees count as half a GP, rounded down: 2 trainees = 1 GP, but 3 still = 1.
 		</p>
 		<div class="nb-scroll">
 			<table class="nb-table">

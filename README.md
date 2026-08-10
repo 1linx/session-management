@@ -23,8 +23,8 @@ npm run db:seed              # admin account + sample rota from example.xlsx
 npm run dev
 ```
 
-Log in with initials as the username: admin is `ADM` / `changeme-admin`
-(sample staff are `DR1` … `ANP2` / `changeme`). **Change these before
+Log in with initials as the username: admin is `ADM` / `eastcalder-admin`
+(sample staff are `DR1` … `ANP2` / `eastcalder`). **Change these before
 deploying anywhere real.**
 
 ### Custom seed data
@@ -38,7 +38,7 @@ npm run db:snapshot                     # or: node scripts/snapshot.js --with-pa
 
 This writes `scripts/seed-data.json`, which `db:seed` prefers from then on
 (no rota entries are captured — weeks start empty). Without
-`--with-passwords`, reseeded users all get the password `changeme`; with it,
+`--with-passwords`, reseeded users all get the password `eastcalder`; with it,
 everyone keeps their login.
 
 The file contains real staff names, so it is **gitignored, never committed**.
@@ -59,8 +59,9 @@ scp scripts/seed-data.json foundry:session-management/scripts/
 - **Standard sessions**: set per user by an admin as a Mon–Fri × AM/PM grid
   of practices, so someone can be EC-only, Ratho-only, or split across both
   on different sessions. These are defaults, not restrictions — "Use default
-  values" marks them as Working at their usual practice on an empty week,
-  but every cell on the rota can be set manually, and changing someone's
+  values" fills an empty week's grid with Working at their usual practice
+  as unsaved edits (stored only when the admin presses Save), but every
+  cell on the rota can be set manually, and changing someone's
   standard sessions never deletes what's already rostered. A separate
   "can be sent to Ratho" flag tells Auto-fix who may be relocated.
 - **Session state**: Working (at a practice, optionally with a role: Duty
@@ -103,7 +104,9 @@ Rules implemented (configurable on the Staffing rules page unless noted):
 3. EC duty team minimum (error) and desirable (warning) per session.
    ANPs working at EC are always on the duty team (Auto-fix marks them;
    validation warns when one isn't); GPs top the team up to the minimum.
-4. EC house-visit allocations per session, GPs/trainees only.
+4. EC house-visit allocations per session, GPs/trainees only. Trainees
+   count as half a GP, rounded down (2 trainees = 1 GP; 3 still = 1), and
+   trainees working at EC always do house visits in AM sessions.
 5. Duty team / house visits flagged if placed at Ratho.
 
 **Auto-fix** (`autofix.ts`) runs in the browser on the grid as shown —

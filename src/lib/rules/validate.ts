@@ -16,7 +16,10 @@
  *      duty exemption covers the duty team too: an exempt member on it is
  *      an error, and exempt ANPs aren't expected to join.
  *  R4  East Calder house visits must meet the configured allocation per
- *      session, and only GPs/trainees may be allocated.
+ *      session, and only GPs/trainees may be allocated. Trainees count as
+ *      half a GP (rounded down: 2 trainees = 1 GP, 3 trainees still = 1),
+ *      and trainees working at EC always do house visits in AM sessions
+ *      (warning when not marked; Auto-fix corrects it).
  *  R5  Duty team and house visits are East Calder concepts — flagged at
  *      Ratho.
  *
@@ -157,13 +160,19 @@ export function validateWeek(
 			});
 		}
 
-		// R4 — East Calder house visits.
+		// R4 — East Calder house visits. Trainees count as half a GP, rounded
+		// down: 2 trainees = 1 GP, but 3 trainees still = 1.
 		const visits = ec.filter((v) => v.cell.role === 'house_visits');
+		const visitTrainees = visits.filter((v) => v.member.category === 'gp_trainee').length;
+		const visitsCount =
+			visits.filter((v) => v.member.category === 'doctor').length + Math.floor(visitTrainees / 2);
 		const visitsRequired = settings.houseVisitsRequired[slot] ?? 0;
-		if (visits.length < visitsRequired) {
+		if (visitsCount < visitsRequired) {
 			found.push({
 				severity: 'error',
-				message: `East Calder: ${visits.length} of ${visitsRequired} required house-visit allocations`
+				message: `East Calder: ${visitsCount} of ${visitsRequired} required house-visit allocations${
+					visitTrainees > 0 ? ' (2 trainees count as 1 GP)' : ''
+				}`
 			});
 		}
 		const nonClinicianVisits = visits.filter((v) => !isClinician(v.member.category));
@@ -172,6 +181,18 @@ export function validateWeek(
 				severity: 'error',
 				message: `East Calder: house visits are for GPs/trainees only (${names(nonClinicianVisits)})`
 			});
+		}
+		// Trainees working at EC always do house visits in AM sessions.
+		if (slotPeriod(slot) === 'AM') {
+			const unmarkedTrainees = ec.filter(
+				(v) => v.member.category === 'gp_trainee' && v.cell.role !== 'house_visits'
+			);
+			if (unmarkedTrainees.length > 0) {
+				found.push({
+					severity: 'warning',
+					message: `East Calder: GP trainees do house visits in AM sessions (${names(unmarkedTrainees)} not marked)`
+				});
+			}
 		}
 
 		if (found.length > 0) problems[slot] = found;

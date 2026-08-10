@@ -134,55 +134,8 @@ export const actions: Actions = {
 		return { saved: true };
 	},
 
-	/**
-	 * Populate an empty week from standard availability: every session each
-	 * person normally works becomes Working at their usual practice.
-	 */
-	useDefaults: async ({ request, locals }) => {
-		if (locals.user?.role !== 'admin') {
-			return fail(403, { message: 'Only admins can edit the rota.' });
-		}
-
-		const data = await request.formData();
-		const week = weekFromForm(data);
-		if (!week) return fail(400, { message: 'Invalid week.' });
-
-		const rotaUsers = await loadRotaUsers();
-		const existing = await entriesForWeek(
-			week,
-			rotaUsers.map((u) => u.id)
-		);
-		if (existing.length > 0) {
-			return fail(400, {
-				message: 'This week already has entries — defaults are only for empty weeks.'
-			});
-		}
-
-		const values = rotaUsers.flatMap((user) =>
-			Object.entries(JSON.parse(user.standardSlots) as StandardSlots).map(
-				([slot, practice]) => {
-					const [weekdayRaw, period] = slot.split(':');
-					return {
-						userId: user.id,
-						weekStart: week,
-						weekday: Number(weekdayRaw),
-						period,
-						status: 'working',
-						location: practice ?? 'east_calder',
-						role: null
-					};
-				}
-			)
-		);
-		if (values.length === 0) {
-			return fail(400, { message: 'No one on the rota has any standard availability set.' });
-		}
-
-		await db.insert(scheduleEntries).values(values);
-
-		broadcastChange('rota');
-		return { defaulted: true };
-	},
+	// "Use default values" is client-side: it fills the grid from standard
+	// availability as unsaved edits, so the admin reviews and Saves manually.
 
 	/** Populate an empty week from the week before it. */
 	copyWeek: async ({ request, locals }) => {

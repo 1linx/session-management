@@ -136,19 +136,20 @@ describe('R2 — minimum routine clinicians', () => {
 	it('counts GPs/trainees on routine or duty, per practice', () => {
 		const s = settings();
 		s.minRoutineClinicians.east_calder = 3;
+		// PM session: in AM, trainees would belong on house visits instead.
 		const problems = validateWeek(
 			[gp('a'), gp('b'), trainee('t'), anp('n'), gp('r')],
 			grid({
-				a: { '1:AM': 'working:east_calder:duty' }, // duty — counts too
-				b: { '1:AM': 'working:east_calder' },
-				t: { '1:AM': 'working:east_calder' },
-				n: { '1:AM': 'working:east_calder:duty_team' }, // ANP — not a clinician
-				r: { '1:AM': 'working:ratho:duty' }
+				a: { '1:PM': 'working:east_calder:duty' }, // duty — counts too
+				b: { '1:PM': 'working:east_calder' },
+				t: { '1:PM': 'working:east_calder' },
+				n: { '1:PM': 'working:east_calder:duty_team' }, // ANP — not a clinician
+				r: { '1:PM': 'working:ratho:duty' }
 			}),
 			s
 		);
 		// a + b + t = 3 → satisfied.
-		expect(problems['1:AM'] ?? []).toEqual([]);
+		expect(problems['1:PM'] ?? []).toEqual([]);
 	});
 
 	it('a lone duty GP fulfils a minimum of 1 on their own', () => {
@@ -287,16 +288,82 @@ describe('R4/R5 — house visits and misplaced roles', () => {
 			[gp('a'), anp('n')],
 			grid({
 				a: { '2:PM': 'working:east_calder:duty' },
-				n: { '2:PM': 'working:east_calder:house_visits' }
+				n: { '2:PM': 'working:east_calder:house_visits' } // ANP — doesn't count
 			}),
 			s
 		);
 		expect(
-			problems['2:PM'].some((p) => p.message.includes('1 of 2 required house-visit'))
+			problems['2:PM'].some((p) => p.message.includes('0 of 2 required house-visit'))
 		).toBe(true);
 		expect(
 			problems['2:PM'].some((p) => p.message.includes('house visits are for GPs/trainees only'))
 		).toBe(true);
+	});
+
+	it('counts 2 trainees on visits as 1 GP, rounded down', () => {
+		const s = settings();
+		s.houseVisitsRequired['2:PM'] = 2;
+		const staff = [gp('a'), gp('b'), trainee('t1'), trainee('t2'), trainee('t3')];
+		// 1 GP + 2 trainees = 2 → satisfied.
+		const satisfied = validateWeek(
+			staff,
+			grid({
+				a: { '2:PM': 'working:east_calder:duty' },
+				b: { '2:PM': 'working:east_calder:house_visits' },
+				t1: { '2:PM': 'working:east_calder:house_visits' },
+				t2: { '2:PM': 'working:east_calder:house_visits' }
+			}),
+			s
+		);
+		expect(
+			(satisfied['2:PM'] ?? []).some((p) => p.message.includes('house-visit'))
+		).toBe(false);
+
+		// 3 trainees still only = 1 → shortfall of 1.
+		const short = validateWeek(
+			staff,
+			grid({
+				a: { '2:PM': 'working:east_calder:duty' },
+				t1: { '2:PM': 'working:east_calder:house_visits' },
+				t2: { '2:PM': 'working:east_calder:house_visits' },
+				t3: { '2:PM': 'working:east_calder:house_visits' }
+			}),
+			s
+		);
+		expect(
+			short['2:PM'].some((p) =>
+				p.message.includes('1 of 2 required house-visit allocations (2 trainees count as 1 GP)')
+			)
+		).toBe(true);
+	});
+
+	it('expects EC trainees on house visits in AM sessions only', () => {
+		const staff = [gp('a'), trainee('t')];
+		const am = validateWeek(
+			staff,
+			grid({
+				a: { '1:AM': 'working:east_calder:duty' },
+				t: { '1:AM': 'working:east_calder' }
+			}),
+			settings()
+		);
+		expect(
+			am['1:AM'].some(
+				(p) => p.severity === 'warning' && p.message.includes('GP trainees do house visits in AM')
+			)
+		).toBe(true);
+
+		const pm = validateWeek(
+			staff,
+			grid({
+				a: { '1:PM': 'working:east_calder:duty' },
+				t: { '1:PM': 'working:east_calder' }
+			}),
+			settings()
+		);
+		expect(
+			(pm['1:PM'] ?? []).some((p) => p.message.includes('GP trainees do house visits'))
+		).toBe(false);
 	});
 
 	it('flags duty team or house visits at Ratho', () => {

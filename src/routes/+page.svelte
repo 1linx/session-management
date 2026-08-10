@@ -121,7 +121,21 @@
 		// A new week's data invalidates any previous auto-fix report.
 		void data.week;
 		autofixChanges = null;
+		usedDefaults = false;
 	});
+
+	// "Use default values": fill the grid from everyone's standard availability
+	// as unsaved edits — nothing is stored until the admin presses Save.
+	let usedDefaults = $state(false);
+	function useDefaultValues() {
+		for (const user of data.rotaUsers) {
+			for (const slot of ALL_SLOTS) {
+				const practice = user.standardSlots[slot];
+				if (practice) cellValues[`${user.id}|${slot}`] = `working:${practice}`;
+			}
+		}
+		usedDefaults = true;
+	}
 
 	function runAutoFix() {
 		const { changes } = autoFixWeek(staffForRules, currentGrid(), data.ruleSettings);
@@ -254,9 +268,9 @@
 		<span class="inline-block border-2 border-ink bg-mint px-3 py-1 font-bold">
 			Copied from the previous week — remember to Save any further changes.
 		</span>
-	{:else if form?.defaulted}
-		<span class="inline-block border-2 border-ink bg-mint px-3 py-1 font-bold">
-			Filled in from standard availability — remember to Save any further changes.
+	{:else if usedDefaults && dirty}
+		<span class="inline-block border-2 border-ink bg-accent px-3 py-1 font-bold">
+			Filled in from standard availability as unsaved edits — review, then press Save.
 		</span>
 	{:else if autofixChanges !== null && autofixChanges.length === 0}
 		<span class="inline-block border-2 border-ink bg-accent px-3 py-1 font-bold">
@@ -426,14 +440,11 @@
 	</details>
 {/if}
 
-{#if isAdmin && data.weekIsEmpty}
+{#if isAdmin && data.weekIsEmpty && !dirty}
 	<div class="mt-6">
 		<p class="mb-2 text-sm font-bold">This week has no rota yet. Start from:</p>
 		<div class="flex flex-wrap gap-3">
-			<form method="POST" action={`?week=${data.week}&/useDefaults`} use:enhance>
-				<input type="hidden" name="week" value={data.week} />
-				<button class="nb-btn">Use default values</button>
-			</form>
+			<button type="button" class="nb-btn" onclick={useDefaultValues}>Use default values</button>
 			<form method="POST" action={`?week=${data.week}&/copyWeek`} use:enhance>
 				<input type="hidden" name="week" value={data.week} />
 				<button class="nb-btn nb-btn-secondary">
@@ -443,7 +454,7 @@
 		</div>
 		<p class="mt-2 max-w-prose text-sm">
 			Default values mark everyone as Working at their usual practice on the sessions they
-			normally work, from their user settings.
+			normally work, from their user settings — as unsaved edits for you to review, then Save.
 		</p>
 	</div>
 {/if}

@@ -28,6 +28,14 @@ const anp = (
 	dutyExempt,
 	standardSlots
 });
+const trainee = (id: string): StaffMember => ({
+	id,
+	initials: id.toUpperCase(),
+	category: 'gp_trainee',
+	canWorkRatho: false,
+	dutyExempt: { AM: false, PM: false },
+	standardSlots: {}
+});
 
 function grid(cells: Record<string, Record<string, string>>): WeekGrid {
 	const out: WeekGrid = {};
@@ -340,6 +348,56 @@ describe('autoFixWeek', () => {
 		// One GP takes duty, the other joins the team to reach 2.
 		const teamGps = ['a', 'b'].filter((u) => fixed[u]['1:AM'].role === 'duty_team');
 		expect(teamGps).toHaveLength(1);
+	});
+
+	it('always puts an EC trainee on house visits in AM sessions, never PM', () => {
+		const staff = [gp('a'), trainee('t')];
+		const { grid: fixed, changes } = autoFixWeek(
+			staff,
+			grid({
+				a: { '1:AM': 'working:east_calder', '1:PM': 'working:east_calder' },
+				t: { '1:AM': 'working:east_calder', '1:PM': 'working:east_calder' }
+			}),
+			settings()
+		);
+		expect(keyAt(fixed, 't', '1:AM')).toBe('working:east_calder:house_visits');
+		expect(changes.some((c) => c.reason.includes('house visits in AM'))).toBe(true);
+		expect(fixed['t']['1:PM'].role).toBeNull(); // PM untouched
+	});
+
+	it('fills a visit allocation with 2 trainees when no GP is spare', () => {
+		const s = settings();
+		s.houseVisitsRequired['1:PM'] = 1;
+		const staff = [gp('a'), trainee('t1'), trainee('t2')];
+		const { grid: fixed } = autoFixWeek(
+			staff,
+			grid({
+				a: { '1:PM': 'working:east_calder' },
+				t1: { '1:PM': 'working:east_calder' },
+				t2: { '1:PM': 'working:east_calder' }
+			}),
+			s
+		);
+		// a takes duty; both trainees go to visits (2 trainees = 1 GP).
+		expect(fixed['t1']['1:PM'].role).toBe('house_visits');
+		expect(fixed['t2']['1:PM'].role).toBe('house_visits');
+	});
+
+	it('does not waste a lone trainee on visits when they cannot complete a pair', () => {
+		const s = settings();
+		s.houseVisitsRequired['1:PM'] = 1;
+		const staff = [gp('a'), trainee('t1')];
+		const { grid: fixed } = autoFixWeek(
+			staff,
+			grid({
+				a: { '1:PM': 'working:east_calder' },
+				t1: { '1:PM': 'working:east_calder' }
+			}),
+			s
+		);
+		// a takes duty; a single trainee counts for 0 visits, so they stay
+		// on routine clinics rather than being burned for no credit.
+		expect(fixed['t1']['1:PM'].role).toBeNull();
 	});
 
 	it('respects the routine minimum when allocating house visits', () => {
