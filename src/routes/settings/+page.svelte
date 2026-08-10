@@ -3,6 +3,17 @@
 	import { PERIODS, WEEKDAYS, slotKey } from '$lib/constants';
 
 	let { data, form } = $props();
+
+	// Transient so repeat saves visibly confirm each time (a permanent
+	// "saved" badge reads as stale after the first save).
+	let justSaved = $state(false);
+	let savedTimer: ReturnType<typeof setTimeout> | undefined;
+
+	function showSaved() {
+		justSaved = true;
+		clearTimeout(savedTimer);
+		savedTimer = setTimeout(() => (justSaved = false), 4000);
+	}
 </script>
 
 <svelte:head><title>Staffing rules — Time Management</title></svelte:head>
@@ -14,22 +25,15 @@
 	to disable that check.
 </p>
 
-<p aria-live="polite" role="status" class="mb-4">
-	{#if form?.saved}
-		<span class="inline-block border-2 border-ink bg-mint px-3 py-1 font-bold">Rules saved.</span>
-	{:else if form?.message}
-		<span class="inline-block border-2 border-ink bg-coral px-3 py-1 font-bold">{form.message}</span>
-	{/if}
-</p>
-
 <!-- reset: false — the default enhance behaviour resets inputs to their
      SSR-era defaults after saving, which visually zeroes the other sections;
      the next save would then persist those zeros (data loss). -->
 <form
 	method="POST"
 	use:enhance={() =>
-		async ({ update }) => {
+		async ({ result, update }) => {
 			await update({ reset: false });
+			if (result.type === 'success') showSaved();
 		}}
 	class="flex max-w-4xl flex-col gap-8"
 >
@@ -155,7 +159,18 @@
 		</div>
 	</fieldset>
 
-	<div>
+	<div class="flex flex-wrap items-center gap-4">
 		<button class="nb-btn">Save rules</button>
+		<p aria-live="polite" role="status" class="m-0">
+			{#if justSaved}
+				<span class="inline-block border-2 border-ink bg-mint px-3 py-1 font-bold shadow-brutal-sm"
+					>Saved!</span
+				>
+			{:else if form?.message}
+				<span class="inline-block border-2 border-ink bg-coral px-3 py-1 font-bold shadow-brutal-sm"
+					>{form.message}</span
+				>
+			{/if}
+		</p>
 	</div>
 </form>
