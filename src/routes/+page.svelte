@@ -101,6 +101,17 @@
 
 	const problems = $derived.by(() => validateWeek(staffForRules, currentGrid(), data.ruleSettings));
 	const problemSlots = $derived(rows.filter((row) => (problems[row.slot] ?? []).length > 0));
+	const problemCounts = $derived.by(() => {
+		let errors = 0;
+		let warnings = 0;
+		for (const row of problemSlots) {
+			for (const problem of problems[row.slot] ?? []) {
+				if (problem.severity === 'error') errors += 1;
+				else warnings += 1;
+			}
+		}
+		return { errors, warnings };
+	});
 
 	// --- Auto fix: runs in the browser on the grid as shown (including any
 	// unsaved edits). Applies results as unsaved edits, so the normal
@@ -399,39 +410,20 @@
 {/if}
 
 {#if (autofixChanges?.length ?? 0) > 0}
-	<section class="nb-card mt-4 max-w-3xl" aria-label="Auto fix changes">
-		<h2 class="mb-2 font-bold uppercase">Auto fix changes {dirty ? '(unsaved)' : ''}</h2>
-		<ul class="list-inside list-disc text-sm">
+	<details class="mt-4 max-w-3xl border-2 border-ink bg-white shadow-brutal">
+		<summary class="cursor-pointer px-4 py-3 font-bold uppercase select-none">
+			Auto fix changes {dirty ? '(unsaved)' : ''}
+			<span class="ml-2 inline-block bg-ink px-1.5 text-xxs font-bold tracking-widest text-white uppercase">
+				{autofixChanges?.length}
+				{autofixChanges?.length === 1 ? 'change' : 'changes'}
+			</span>
+		</summary>
+		<ul class="list-inside list-disc border-t-2 border-ink p-4 text-sm">
 			{#each autofixChanges ?? [] as change (change)}
 				<li>{change}</li>
 			{/each}
 		</ul>
-	</section>
-{/if}
-
-{#if problemSlots.length > 0}
-	<section class="mt-6 max-w-3xl border-2 border-ink bg-white p-4 shadow-brutal" aria-label="Staffing issues">
-		<h2 class="mb-2 font-bold uppercase">Staffing issues this week</h2>
-		<dl class="flex flex-col gap-3 text-sm">
-			{#each problemSlots as row (row.slot)}
-				<div>
-					<dt class="font-bold">{row.label}</dt>
-					{#each problems[row.slot] ?? [] as problem (problem.message)}
-						<dd class="ml-4">
-							{#if problem.severity === 'error'}
-								<span class="mr-1 inline-block bg-red-600 px-1 text-xxs font-bold tracking-widest text-white uppercase">Rule</span>
-							{:else}
-								<span class="mr-1 inline-block bg-ink px-1 text-xxs font-bold tracking-widest text-white uppercase">Note</span>
-							{/if}
-							{problem.message}
-						</dd>
-					{/each}
-				</div>
-			{/each}
-		</dl>
-	</section>
-{:else}
-	<p class="mt-6 text-sm font-bold" role="status">✓ All staffing rules met this week.</p>
+	</details>
 {/if}
 
 {#if isAdmin && data.weekIsEmpty}
@@ -485,6 +477,43 @@
 		</li>
 	</ul>
 </section>
+
+{#if problemSlots.length > 0}
+	<details class="mt-6 max-w-3xl border-2 border-ink bg-white shadow-brutal">
+		<summary class="cursor-pointer px-4 py-3 font-bold uppercase select-none">
+			Staffing issues this week
+			{#if problemCounts.errors > 0}
+				<span class="ml-2 inline-block bg-red-600 px-1.5 text-xxs font-bold tracking-widest text-white uppercase">
+					{problemCounts.errors} rule{problemCounts.errors === 1 ? '' : 's'} broken
+				</span>
+			{/if}
+			{#if problemCounts.warnings > 0}
+				<span class="ml-2 inline-block bg-ink px-1.5 text-xxs font-bold tracking-widest text-white uppercase">
+					{problemCounts.warnings} note{problemCounts.warnings === 1 ? '' : 's'}
+				</span>
+			{/if}
+		</summary>
+		<dl class="flex flex-col gap-3 border-t-2 border-ink p-4 text-sm">
+			{#each problemSlots as row (row.slot)}
+				<div>
+					<dt class="font-bold">{row.label}</dt>
+					{#each problems[row.slot] ?? [] as problem (problem.message)}
+						<dd class="ml-4">
+							{#if problem.severity === 'error'}
+								<span class="mr-1 inline-block bg-red-600 px-1 text-xxs font-bold tracking-widest text-white uppercase">Rule</span>
+							{:else}
+								<span class="mr-1 inline-block bg-ink px-1 text-xxs font-bold tracking-widest text-white uppercase">Note</span>
+							{/if}
+							{problem.message}
+						</dd>
+					{/each}
+				</div>
+			{/each}
+		</dl>
+	</details>
+{:else}
+	<p class="mt-6 text-sm font-bold" role="status">✓ All staffing rules met this week.</p>
+{/if}
 
 <dialog
 	bind:this={dialog}
