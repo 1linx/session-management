@@ -80,7 +80,8 @@
 			id: u.id,
 			initials: u.initials,
 			category: u.category,
-			canWorkRatho: u.canWorkRatho
+			canWorkRatho: u.canWorkRatho,
+			standardSlots: u.standardSlots
 		}))
 	);
 

@@ -7,9 +7,9 @@
  *  R2  Each practice must have at least the configured minimum of GPs +
  *      GP trainees on routine clinics (role = none) per session.
  *  R3  East Calder duty team must meet the configured minimum per session
- *      (error) and ideally the desirable number (warning). ANPs should be
- *      used before GPs (warning when a GP is on the team while a routine
- *      ANP is available).
+ *      (error) and ideally the desirable number (warning). ANPs working at
+ *      East Calder are always on the duty team — one that isn't marked as
+ *      such is flagged (warning; Auto-fix corrects it).
  *  R4  East Calder house visits must meet the configured allocation per
  *      session, and only GPs/trainees may be allocated.
  *  R5  Duty team and house visits are East Calder concepts — flagged at
@@ -122,12 +122,13 @@ export function validateWeek(
 				message: `East Calder: duty team has ${team.length}, below the desirable ${teamDesired}`
 			});
 		}
-		const gpOnTeam = team.filter((v) => v.member.category !== 'anp');
-		const spareAnps = ec.filter((v) => v.cell.role === null && v.member.category === 'anp');
-		if (gpOnTeam.length > 0 && spareAnps.length > 0) {
+		const unmarkedAnps = ec.filter(
+			(v) => v.member.category === 'anp' && v.cell.role !== 'duty_team'
+		);
+		if (unmarkedAnps.length > 0) {
 			found.push({
 				severity: 'warning',
-				message: `East Calder: ANPs should fill the duty team before GPs (${names(spareAnps)} available)`
+				message: `East Calder: ANPs always join the duty team (${names(unmarkedAnps)} not marked)`
 			});
 		}
 

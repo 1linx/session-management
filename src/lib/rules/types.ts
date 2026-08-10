@@ -7,7 +7,7 @@
  * side effects. The rota page runs validateWeek() live in the browser; the
  * Auto-fix server action runs autoFixWeek() on saved data.
  */
-import type { CellValue } from '$lib/constants';
+import type { CellValue, StandardSlots } from '$lib/constants';
 
 /** The subset of a user the rules need. */
 export type StaffMember = {
@@ -17,7 +17,11 @@ export type StaffMember = {
 	category: string;
 	/** May Auto-fix relocate them to Ratho? */
 	canWorkRatho: boolean;
-	/** How many sessions they work in this week's grid (for duty fairness). */
+	/**
+	 * Standard availability (slot → practice). Auto-fix uses it to bring an
+	 * ANP with a blank "Not working" cell onto the EC duty team.
+	 */
+	standardSlots: StandardSlots;
 };
 
 /** One week of cells: userId → slotKey ("1:AM") → cell state. */

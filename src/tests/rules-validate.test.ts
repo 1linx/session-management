@@ -7,19 +7,22 @@ const gp = (id: string, canWorkRatho = false): StaffMember => ({
 	id,
 	initials: id.toUpperCase(),
 	category: 'doctor',
-	canWorkRatho
+	canWorkRatho,
+	standardSlots: {}
 });
 const trainee = (id: string): StaffMember => ({
 	id,
 	initials: id.toUpperCase(),
 	category: 'gp_trainee',
-	canWorkRatho: false
+	canWorkRatho: false,
+	standardSlots: {}
 });
 const anp = (id: string): StaffMember => ({
 	id,
 	initials: id.toUpperCase(),
 	category: 'anp',
-	canWorkRatho: false
+	canWorkRatho: false,
+	standardSlots: {}
 });
 
 /** Build a grid from encoded keys: { userId: { '1:AM': 'working:east_calder:duty' } } */
@@ -102,7 +105,7 @@ describe('R2 — minimum routine clinicians', () => {
 				a: { '1:AM': 'working:east_calder:duty' }, // duty — not routine
 				b: { '1:AM': 'working:east_calder' },
 				t: { '1:AM': 'working:east_calder' },
-				n: { '1:AM': 'working:east_calder' }, // ANP — not a clinician
+				n: { '1:AM': 'working:east_calder:duty_team' }, // ANP — not a clinician
 				r: { '1:AM': 'working:ratho:duty' }
 			}),
 			s
@@ -160,23 +163,34 @@ describe('R3 — East Calder duty team', () => {
 		expect(teamProblems[0].severity).toBe('warning'); // below desirable only
 	});
 
-	it('warns when a GP fills the team while a routine ANP is available', () => {
-		const s = settings();
-		s.dutyTeamMin['1:AM'] = 1;
+	it('warns when an East Calder ANP is not marked as duty team', () => {
 		const problems = validateWeek(
-			[gp('a'), gp('b'), anp('n')],
+			[gp('a'), anp('n')],
 			grid({
 				a: { '1:AM': 'working:east_calder:duty' },
-				b: { '1:AM': 'working:east_calder:duty_team' },
 				n: { '1:AM': 'working:east_calder' }
 			}),
-			s
+			settings()
 		);
 		expect(
 			problems['1:AM'].some(
-				(p) => p.severity === 'warning' && p.message.includes('ANPs should fill the duty team')
+				(p) => p.severity === 'warning' && p.message.includes('ANPs always join the duty team')
 			)
 		).toBe(true);
+	});
+
+	it('does not expect Ratho ANPs to be on the duty team', () => {
+		const problems = validateWeek(
+			[gp('a'), anp('n')],
+			grid({
+				a: { '1:AM': 'working:east_calder:duty' },
+				n: { '1:AM': 'working:ratho' }
+			}),
+			settings()
+		);
+		expect(
+			(problems['1:AM'] ?? []).some((p) => p.message.includes('always join the duty team'))
+		).toBe(false);
 	});
 });
 

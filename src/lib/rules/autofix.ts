@@ -3,20 +3,27 @@
  *
  * Pure function: takes the week grid, returns a corrected copy plus a list
  * of every change made (who, which session, from → to, why). It NEVER:
- *   - touches "Not working" or "Off sick" cells (nobody is conjured in),
+ *   - touches sick / leave / activity cells,
+ *   - brings anyone in from "Not working" — EXCEPT an ANP whose standard
+ *     availability covers that session at East Calder (they join the duty
+ *     team; a blank cell for an available ANP means "not yet rostered"),
  *   - removes anyone from work,
  *   - moves anyone to Ratho unless their "can be sent to Ratho" flag is set.
  *
  * Order of operations per session (Monday AM → Friday PM):
- *   1. Strip invalid roles (duty team / house visits at Ratho; duty held by
- *      a non-GP; duplicate duty doctors — the fairest keeps it).
+ *   1. Normalise roles: ANPs at East Calder — working there, or available
+ *      there per their standard sessions but left "Not working" — are
+ *      ALWAYS on the duty team (whatever role their cell held), ahead of
+ *      any GP; strip invalid roles elsewhere (duty team / house visits at
+ *      Ratho; duty held by a non-GP; duplicate duty doctors — the fairest
+ *      keeps it).
  *   2. Ensure one duty doctor at each practice. Candidates are routine GPs
  *      already working there; if Ratho has none, a routine East Calder GP
  *      with canWorkRatho is relocated — but only if East Calder still meets
  *      its own duty + routine minimum afterwards.
- *   3. Fill the East Calder duty team to its minimum: routine ANPs first,
- *      then routine GPs/trainees (never dropping routine clinicians below
- *      the configured minimum).
+ *   3. Top the East Calder duty team up to its minimum with routine
+ *      GPs/trainees (every EC ANP is already on it after step 1), never
+ *      dropping routine clinicians below the configured minimum.
  *   4. Fill East Calder house visits: routine GPs/trainees only, same
  *      minimum-preserving constraint.
  *
@@ -82,9 +89,38 @@ function byDutyFairness(ctx: Ctx) {
 }
 
 function fixSlot(ctx: Ctx, slot: string) {
-	// 1. Strip invalid roles.
+	// 1. Normalise roles.
 	for (const member of ctx.staff) {
 		const cell = cellOf(ctx, member.id, slot);
+		if (member.category === 'anp') {
+			// ANPs working at East Calder are always on the duty team.
+			if (cell.status === 'working' && cell.location === 'east_calder') {
+				if (cell.role !== 'duty_team') {
+					setCell(
+						ctx,
+						member,
+						slot,
+						{ status: 'working', location: 'east_calder', role: 'duty_team' },
+						'ANPs at East Calder are always on the duty team'
+					);
+				}
+				continue;
+			}
+			// An available ANP left "Not working" is brought in — a blank cell
+			// in a session their standard availability covers at EC means
+			// "not yet rostered", not "off". Absence statuses stay untouched.
+			if (cell.status === 'not_working' && member.standardSlots[slot] === 'east_calder') {
+				setCell(
+					ctx,
+					member,
+					slot,
+					{ status: 'working', location: 'east_calder', role: 'duty_team' },
+					'available ANP brought in to the East Calder duty team'
+				);
+				ctx.workCount.set(member.id, (ctx.workCount.get(member.id) ?? 0) + 1);
+				continue;
+			}
+		}
 		if (cell.status !== 'working') continue;
 		if (cell.location === 'ratho' && (cell.role === 'duty_team' || cell.role === 'house_visits')) {
 			setCell(ctx, member, slot, { ...cell, role: null }, 'duty team/house visits only exist at East Calder');
@@ -150,21 +186,11 @@ function fixSlot(ctx: Ctx, slot: string) {
 		}
 	}
 
-	// 3. East Calder duty team up to the minimum — ANPs first, then GPs/trainees.
+	// 3. East Calder duty team up to the minimum. Every EC ANP is already on
+	// the team (step 1), so only routine GPs/trainees remain as top-ups.
 	const teamMin = ctx.settings.dutyTeamMin[slot] ?? 0;
 	const team = () =>
 		workingAt(ctx, slot, 'east_calder').filter((m) => cellOf(ctx, m.id, slot).role === 'duty_team');
-	const anps = routine(ctx, slot, 'east_calder').filter((m) => m.category === 'anp');
-	for (const anp of anps) {
-		if (team().length >= teamMin) break;
-		setCell(
-			ctx,
-			anp,
-			slot,
-			{ status: 'working', location: 'east_calder', role: 'duty_team' },
-			'added to duty team (ANPs first)'
-		);
-	}
 	while (team().length < teamMin) {
 		const clinicians = routineClinicians(ctx, slot, 'east_calder');
 		if (clinicians.length - 1 < ctx.settings.minRoutineClinicians.east_calder) break;
@@ -175,7 +201,7 @@ function fixSlot(ctx: Ctx, slot: string) {
 			pick,
 			slot,
 			{ status: 'working', location: 'east_calder', role: 'duty_team' },
-			'added to duty team (no routine ANP left)'
+			'added to duty team (no ANP available)'
 		);
 	}
 

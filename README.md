@@ -95,20 +95,24 @@ Rules implemented (configurable on the Staffing rules page unless noted):
 
 1. Exactly one GP duty doctor per practice per session (always on).
 2. Minimum GPs/trainees on routine clinics, per practice.
-3. EC duty team minimum (error) and desirable (warning) per session;
-   ANPs fill the team before GPs.
+3. EC duty team minimum (error) and desirable (warning) per session.
+   ANPs working at EC are always on the duty team (Auto-fix marks them;
+   validation warns when one isn't); GPs top the team up to the minimum.
 4. EC house-visit allocations per session, GPs/trainees only.
 5. Duty team / house visits flagged if placed at Ratho.
 
 **Auto-fix** (`autofix.ts`) runs in the browser on the grid as shown —
 including unsaved edits — and applies its corrections as **unsaved edits**
-for review; nothing persists until the admin presses Save. It strips invalid
-roles, promotes routine GPs to duty (choosing the lowest
-duty-per-sessions-worked ratio so duty spreads proportionately), relocates a
-`canWorkRatho` GP when Ratho lacks one (only if EC still meets its own
-rules), fills the duty team ANP-first, then house visits — never touching
-unavailable cells (not working, sick, leave, activities) and never dropping
-anyone below the routine minimum. Every change is listed in the UI; what can't be fixed stays red,
+for review; nothing persists until the admin presses Save. It puts every
+East Calder ANP on the duty team — including bringing in an ANP left "Not
+working" in a session their standard availability covers at EC — strips
+invalid roles, promotes routine GPs to duty (choosing the lowest
+duty-per-sessions-worked ratio so duty spreads proportionately), relocates
+a `canWorkRatho` GP when Ratho lacks one (only if EC still meets its own
+rules), tops the duty team up with GPs, then fills house visits — never
+touching absences (sick, leave, activities), never bringing anyone but an
+available ANP in from "Not working", and never dropping anyone below the
+routine minimum. Every change is listed in the UI; what can't be fixed stays red,
 and navigating away discards the proposal like any other unsaved edit.
 
 Planned next (from the brief, not yet implemented): a cross-site
