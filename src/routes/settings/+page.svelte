@@ -22,7 +22,17 @@
 	{/if}
 </p>
 
-<form method="POST" use:enhance class="flex max-w-4xl flex-col gap-8">
+<!-- reset: false — the default enhance behaviour resets inputs to their
+     SSR-era defaults after saving, which visually zeroes the other sections;
+     the next save would then persist those zeros (data loss). -->
+<form
+	method="POST"
+	use:enhance={() =>
+		async ({ update }) => {
+			await update({ reset: false });
+		}}
+	class="flex max-w-4xl flex-col gap-8"
+>
 	<fieldset class="nb-card">
 		<legend class="border-2 border-ink bg-accent px-3 py-1 font-bold uppercase shadow-brutal-sm">
 			Routine clinics
