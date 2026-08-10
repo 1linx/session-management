@@ -93,7 +93,10 @@ rows breaking a rule are outlined red with the reasons listed under the grid.
 
 Rules implemented (configurable on the Staffing rules page unless noted):
 
-1. Exactly one GP duty doctor per practice per session (always on).
+1. Exactly one GP duty doctor per practice per session (always on). Users
+   can be excluded from AM and/or PM duty (checkboxes on their user page):
+   Auto-fix never assigns them duty in that period, and validation flags
+   it if set by hand.
 2. Minimum GPs/trainees on routine clinics, per practice. The duty doctor
    counts towards it (duty is worked alongside routine patients); duty
    team and house visits don't.

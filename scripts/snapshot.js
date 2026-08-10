@@ -50,6 +50,8 @@ const data = {
 		category: u.category,
 		standardSlots: JSON.parse(u.working_slots),
 		canWorkRatho: Boolean(u.can_work_ratho),
+		dutyExemptAm: Boolean(u.duty_exempt_am),
+		dutyExemptPm: Boolean(u.duty_exempt_pm),
 		leaveEntitlement: u.leave_entitlement,
 		displayOrder: u.display_order,
 		onRota: Boolean(u.on_rota),

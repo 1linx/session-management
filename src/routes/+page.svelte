@@ -81,6 +81,7 @@
 			initials: u.initials,
 			category: u.category,
 			canWorkRatho: u.canWorkRatho,
+			dutyExempt: { AM: u.dutyExemptAm, PM: u.dutyExemptPm },
 			standardSlots: u.standardSlots
 		}))
 	);

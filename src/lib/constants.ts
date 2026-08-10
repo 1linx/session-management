@@ -192,6 +192,11 @@ export function slotKey(weekday: number, period: string): string {
 	return `${weekday}:${period}`;
 }
 
+/** The period of a slot key: "3:PM" → "PM". */
+export function slotPeriod(slot: string): Period {
+	return slot.split(':')[1] as Period;
+}
+
 /** Every schedulable slot: "1:AM", "1:PM" … "5:PM". */
 export const ALL_SLOTS: string[] = WEEKDAYS.flatMap((day) =>
 	PERIODS.map((period) => slotKey(day.value, period.value))

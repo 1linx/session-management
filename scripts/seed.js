@@ -33,8 +33,8 @@ function hashPassword(password) {
 const now = Math.floor(Date.now() / 1000);
 
 const insertUser = db.prepare(`
-	INSERT INTO users (id, password_hash, name, initials, role, category, working_slots, can_work_ratho, leave_entitlement, display_order, on_rota, active, created_at)
-	VALUES (@id, @passwordHash, @name, @initials, @role, @category, @standardSlots, @canWorkRatho, @leaveEntitlement, @displayOrder, @onRota, @active, @createdAt)
+	INSERT INTO users (id, password_hash, name, initials, role, category, working_slots, can_work_ratho, duty_exempt_am, duty_exempt_pm, leave_entitlement, display_order, on_rota, active, created_at)
+	VALUES (@id, @passwordHash, @name, @initials, @role, @category, @standardSlots, @canWorkRatho, @dutyExemptAm, @dutyExemptPm, @leaveEntitlement, @displayOrder, @onRota, @active, @createdAt)
 `);
 const insertEntry = db.prepare(`
 	INSERT INTO schedule_entries (id, user_id, week_start, weekday, period, status, location, role, updated_at)
@@ -59,6 +59,8 @@ function seedFromSnapshot(snapshot) {
 				category: user.category,
 				standardSlots: JSON.stringify(user.standardSlots ?? {}),
 				canWorkRatho: user.canWorkRatho ? 1 : 0,
+				dutyExemptAm: user.dutyExemptAm ? 1 : 0,
+				dutyExemptPm: user.dutyExemptPm ? 1 : 0,
 				leaveEntitlement: user.leaveEntitlement ?? 0,
 				displayOrder: user.displayOrder ?? i * 10,
 				onRota: user.onRota ? 1 : 0,
@@ -123,6 +125,8 @@ function seedSample() {
 				)
 			),
 			canWorkRatho: 0,
+			dutyExemptAm: 0,
+			dutyExemptPm: 0,
 			leaveEntitlement: 0,
 			displayOrder: 0,
 			onRota: 0,
@@ -150,6 +154,8 @@ function seedSample() {
 				category: p.category,
 				standardSlots: JSON.stringify(standardSlots),
 				canWorkRatho: p.canWorkRatho,
+				dutyExemptAm: 0,
+				dutyExemptPm: 0,
 				leaveEntitlement: 56, // 28 days
 				displayOrder: (i + 1) * 10,
 				onRota: 1,

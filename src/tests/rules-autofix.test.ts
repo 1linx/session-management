@@ -4,11 +4,16 @@ import { validateWeek, slotHasErrors } from '$lib/rules/validate';
 import { DEFAULT_RULE_SETTINGS, type StaffMember, type WeekGrid } from '$lib/rules/types';
 import { decodeCell, encodeCell } from '$lib/constants';
 
-const gp = (id: string, canWorkRatho = false): StaffMember => ({
+const gp = (
+	id: string,
+	canWorkRatho = false,
+	dutyExempt: StaffMember['dutyExempt'] = { AM: false, PM: false }
+): StaffMember => ({
 	id,
 	initials: id.toUpperCase(),
 	category: 'doctor',
 	canWorkRatho,
+	dutyExempt,
 	standardSlots: {}
 });
 const anp = (id: string, standardSlots: StaffMember['standardSlots'] = {}): StaffMember => ({
@@ -16,6 +21,7 @@ const anp = (id: string, standardSlots: StaffMember['standardSlots'] = {}): Staf
 	initials: id.toUpperCase(),
 	category: 'anp',
 	canWorkRatho: false,
+	dutyExempt: { AM: false, PM: false },
 	standardSlots
 });
 
@@ -86,6 +92,50 @@ describe('autoFixWeek', () => {
 		// The two open duty slots (3:AM, 4:AM) should both go to b.
 		expect(keyAt(fixed, 'b', '3:AM')).toBe('working:east_calder:duty');
 		expect(keyAt(fixed, 'b', '4:AM')).toBe('working:east_calder:duty');
+	});
+
+	it('never assigns duty to a GP excluded from that period', () => {
+		// a would win on fairness, but is excluded from PM duty.
+		const staff = [gp('a', false, { AM: false, PM: true }), gp('b')];
+		const { grid: fixed } = autoFixWeek(
+			staff,
+			grid({
+				a: { '1:PM': 'working:east_calder' },
+				b: { '1:PM': 'working:east_calder', '2:PM': 'working:east_calder:duty' }
+			}),
+			settings()
+		);
+		expect(fixed['a']['1:PM'].role).toBeNull();
+		expect(fixed['b']['1:PM'].role).toBe('duty');
+	});
+
+	it('strips duty from an excluded GP and reassigns it', () => {
+		const staff = [gp('a', false, { AM: true, PM: false }), gp('b')];
+		const { grid: fixed, changes } = autoFixWeek(
+			staff,
+			grid({
+				a: { '1:AM': 'working:east_calder:duty' },
+				b: { '1:AM': 'working:east_calder' }
+			}),
+			settings()
+		);
+		expect(fixed['a']['1:AM'].role).toBeNull();
+		expect(fixed['b']['1:AM'].role).toBe('duty');
+		expect(changes.some((c) => c.reason.includes('excluded from AM duty'))).toBe(true);
+	});
+
+	it('does not relocate an excluded GP to Ratho for duty', () => {
+		const staff = [gp('a'), gp('b', true, { AM: false, PM: true }), anp('n')];
+		const { grid: fixed } = autoFixWeek(
+			staff,
+			grid({
+				a: { '1:PM': 'working:east_calder' },
+				b: { '1:PM': 'working:east_calder' }, // can travel, but no PM duty
+				n: { '1:PM': 'working:ratho' }
+			}),
+			settings()
+		);
+		expect(fixed['b']['1:PM'].location).toBe('east_calder');
 	});
 
 	it('demotes duplicate duty doctors down to one', () => {

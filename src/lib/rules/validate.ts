@@ -3,7 +3,8 @@
  *
  * Implemented rules (from the client brief):
  *  R1  Each practice must have exactly one duty doctor per session, and the
- *      duty doctor must be a GP (not a trainee or ANP).
+ *      duty doctor must be a GP (not a trainee or ANP) who is not excluded
+ *      from duty in that period (per-user AM/PM exemptions).
  *  R2  Each practice must have at least the configured minimum of GPs +
  *      GP trainees on routine clinics per session. The duty doctor counts
  *      towards this minimum (they still see routine patients); duty team
@@ -24,6 +25,7 @@ import {
 	ALL_SLOTS,
 	isClinician,
 	locationLabel,
+	slotPeriod,
 	type CellValue,
 	type LocationValue
 } from '$lib/constants';
@@ -79,6 +81,13 @@ export function validateWeek(
 				found.push({
 					severity: 'error',
 					message: `${label}: duty doctor must be a GP (${names(nonGpDuty)})`
+				});
+			}
+			const exemptDuty = duty.filter((v) => v.member.dutyExempt[slotPeriod(slot)]);
+			if (exemptDuty.length > 0) {
+				found.push({
+					severity: 'error',
+					message: `${label}: excluded from ${slotPeriod(slot)} duty (${names(exemptDuty)})`
 				});
 			}
 

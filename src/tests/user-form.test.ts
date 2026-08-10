@@ -68,6 +68,16 @@ describe('parseUserForm', () => {
 		expect(result.values.onRota).toBe(false);
 		expect(result.values.active).toBe(false);
 		expect(result.values.canWorkRatho).toBe(false);
+		expect(result.values.dutyExemptAm).toBe(false);
+		expect(result.values.dutyExemptPm).toBe(false);
+	});
+
+	it('parses the duty-exemption checkboxes', () => {
+		const result = parseUserForm(form({ ...validFields, dutyExemptPm: 'on' }));
+		expect(result.ok).toBe(true);
+		if (!result.ok) return;
+		expect(result.values.dutyExemptAm).toBe(false);
+		expect(result.values.dutyExemptPm).toBe(true);
 	});
 
 	it('allows a blank password (edit form keeps the existing one)', () => {

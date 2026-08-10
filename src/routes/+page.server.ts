@@ -25,7 +25,9 @@ async function loadRotaUsers() {
 			initials: users.initials,
 			category: users.category,
 			standardSlots: users.standardSlots,
-			canWorkRatho: users.canWorkRatho
+			canWorkRatho: users.canWorkRatho,
+			dutyExemptAm: users.dutyExemptAm,
+			dutyExemptPm: users.dutyExemptPm
 		})
 		.from(users)
 		.where(and(eq(users.active, true), eq(users.onRota, true)))

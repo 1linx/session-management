@@ -15,12 +15,13 @@
  *      there per their standard sessions but left "Not working" — are
  *      ALWAYS on the duty team (whatever role their cell held), ahead of
  *      any GP; strip invalid roles elsewhere (duty team / house visits at
- *      Ratho; duty held by a non-GP; duplicate duty doctors — the fairest
- *      keeps it).
+ *      Ratho; duty held by a non-GP or by a GP excluded from duty in that
+ *      period; duplicate duty doctors — the fairest keeps it).
  *   2. Ensure one duty doctor at each practice. Candidates are routine GPs
- *      already working there; if Ratho has none, a routine East Calder GP
- *      with canWorkRatho is relocated — but only if East Calder still meets
- *      its own duty + routine minimum afterwards.
+ *      already working there who aren't excluded from duty that period; if
+ *      Ratho has none, a routine East Calder GP with canWorkRatho (same
+ *      exclusion applies) is relocated — but only if East Calder still
+ *      meets its own duty + routine minimum afterwards.
  *   3. Top the East Calder duty team up to its minimum with routine
  *      GPs/trainees (every EC ANP is already on it after step 1), never
  *      dropping routine clinicians below the configured minimum.
@@ -36,7 +37,7 @@
  * Anything it cannot fix (e.g. no GP available for Ratho duty) is left
  * as-is and will still be flagged red by validation.
  */
-import { ALL_SLOTS, isClinician, type CellValue, type LocationValue } from '$lib/constants';
+import { ALL_SLOTS, isClinician, slotPeriod, type CellValue, type LocationValue } from '$lib/constants';
 import type { Change, RotaRuleSettings, StaffMember, WeekGrid } from './types';
 
 type Ctx = {
@@ -135,9 +136,16 @@ function fixSlot(ctx: Ctx, slot: string) {
 		if (cell.status !== 'working') continue;
 		if (cell.location === 'ratho' && (cell.role === 'duty_team' || cell.role === 'house_visits')) {
 			setCell(ctx, member, slot, { ...cell, role: null }, 'duty team/house visits only exist at East Calder');
-		}
-		if (cell.role === 'duty' && member.category !== 'doctor') {
+		} else if (cell.role === 'duty' && member.category !== 'doctor') {
 			setCell(ctx, member, slot, { ...cell, role: null }, 'duty doctor must be a GP');
+		} else if (cell.role === 'duty' && member.dutyExempt[slotPeriod(slot)]) {
+			setCell(
+				ctx,
+				member,
+				slot,
+				{ ...cell, role: null },
+				`excluded from ${slotPeriod(slot)} duty`
+			);
 		}
 	}
 
@@ -156,10 +164,10 @@ function fixSlot(ctx: Ctx, slot: string) {
 			);
 		}
 
-		// 2. Ensure a duty doctor.
+		// 2. Ensure a duty doctor (never one excluded from duty this period).
 		if (dutyDocs.length === 0) {
 			const candidates = routine(ctx, slot, practice)
-				.filter((m) => m.category === 'doctor')
+				.filter((m) => m.category === 'doctor' && !m.dutyExempt[slotPeriod(slot)])
 				.sort(byDutyFairness(ctx));
 			// Promoting to duty never breaks the routine minimum: a duty GP
 			// still counts towards it.
@@ -175,7 +183,9 @@ function fixSlot(ctx: Ctx, slot: string) {
 			} else if (practice === 'ratho') {
 				// Relocate an EC routine GP who is allowed to travel, if EC survives it.
 				const traveller = routine(ctx, slot, 'east_calder')
-					.filter((m) => m.category === 'doctor' && m.canWorkRatho)
+					.filter(
+						(m) => m.category === 'doctor' && m.canWorkRatho && !m.dutyExempt[slotPeriod(slot)]
+					)
 					.sort(byDutyFairness(ctx))
 					.find(() => {
 						const ecDuty = workingAt(ctx, slot, 'east_calder').some(

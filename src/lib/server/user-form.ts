@@ -13,6 +13,8 @@ export type UserFormValues = {
 	category: string;
 	standardSlots: StandardSlots;
 	canWorkRatho: boolean;
+	dutyExemptAm: boolean;
+	dutyExemptPm: boolean;
 	leaveEntitlement: number;
 	displayOrder: number;
 	onRota: boolean;
@@ -41,6 +43,8 @@ export function parseUserForm(data: FormData): UserFormResult {
 		category: String(data.get('category') ?? ''),
 		standardSlots,
 		canWorkRatho: data.get('canWorkRatho') === 'on',
+		dutyExemptAm: data.get('dutyExemptAm') === 'on',
+		dutyExemptPm: data.get('dutyExemptPm') === 'on',
 		leaveEntitlement: Number(data.get('leaveEntitlement') ?? 0),
 		displayOrder: Number(data.get('displayOrder') ?? 0),
 		onRota: data.get('onRota') === 'on',

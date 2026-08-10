@@ -17,6 +17,8 @@
 		category?: string;
 		standardSlots?: StandardSlots;
 		canWorkRatho?: boolean;
+		dutyExemptAm?: boolean;
+		dutyExemptPm?: boolean;
 		leaveEntitlement?: number;
 		displayOrder?: number;
 		onRota?: boolean;
@@ -141,6 +143,33 @@
 			/>
 			Can be sent to Ratho if cover is required (used by Auto-fix)
 		</label>
+		<div class="mt-4">
+			<span class="nb-label">Excluded from duty doctor</span>
+			<div class="flex flex-wrap gap-6">
+				<label class="flex items-center gap-2 font-bold">
+					<input
+						type="checkbox"
+						name="dutyExemptAm"
+						checked={values.dutyExemptAm ?? false}
+						class="size-5 accent-ink"
+					/>
+					AM sessions
+				</label>
+				<label class="flex items-center gap-2 font-bold">
+					<input
+						type="checkbox"
+						name="dutyExemptPm"
+						checked={values.dutyExemptPm ?? false}
+						class="size-5 accent-ink"
+					/>
+					PM sessions
+				</label>
+			</div>
+			<p class="mt-1 text-sm">
+				Auto-fix will never assign them duty in an excluded session, and validation flags it
+				if set by hand.
+			</p>
+		</div>
 	</fieldset>
 
 	<div>

@@ -3,11 +3,16 @@ import { validateWeek, slotHasErrors } from '$lib/rules/validate';
 import { DEFAULT_RULE_SETTINGS, type StaffMember, type WeekGrid } from '$lib/rules/types';
 import { decodeCell } from '$lib/constants';
 
-const gp = (id: string, canWorkRatho = false): StaffMember => ({
+const gp = (
+	id: string,
+	canWorkRatho = false,
+	dutyExempt: StaffMember['dutyExempt'] = { AM: false, PM: false }
+): StaffMember => ({
 	id,
 	initials: id.toUpperCase(),
 	category: 'doctor',
 	canWorkRatho,
+	dutyExempt,
 	standardSlots: {}
 });
 const trainee = (id: string): StaffMember => ({
@@ -15,6 +20,7 @@ const trainee = (id: string): StaffMember => ({
 	initials: id.toUpperCase(),
 	category: 'gp_trainee',
 	canWorkRatho: false,
+	dutyExempt: { AM: false, PM: false },
 	standardSlots: {}
 });
 const anp = (id: string): StaffMember => ({
@@ -22,6 +28,7 @@ const anp = (id: string): StaffMember => ({
 	initials: id.toUpperCase(),
 	category: 'anp',
 	canWorkRatho: false,
+	dutyExempt: { AM: false, PM: false },
 	standardSlots: {}
 });
 
@@ -85,6 +92,33 @@ describe('R1 — duty doctor per practice', () => {
 			settings()
 		);
 		expect(problems['1:AM'].some((p) => p.message.includes('duty doctor must be a GP'))).toBe(true);
+	});
+
+	it('flags a duty doctor excluded from that period', () => {
+		const noPm = gp('a', false, { AM: false, PM: true });
+		const am = validateWeek(
+			[noPm, gp('b')],
+			grid({
+				a: { '1:AM': 'working:east_calder:duty' },
+				b: { '1:AM': 'working:ratho:duty' }
+			}),
+			settings()
+		);
+		expect(am['1:AM'] ?? []).toEqual([]); // AM duty is fine
+
+		const pm = validateWeek(
+			[noPm, gp('b')],
+			grid({
+				a: { '1:PM': 'working:east_calder:duty' },
+				b: { '1:PM': 'working:ratho:duty' }
+			}),
+			settings()
+		);
+		expect(
+			pm['1:PM'].some(
+				(p) => p.severity === 'error' && p.message.includes('excluded from PM duty (A)')
+			)
+		).toBe(true);
 	});
 
 	it('says nothing about sessions where nobody works anywhere', () => {
