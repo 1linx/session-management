@@ -42,7 +42,8 @@
 			Routine clinics
 		</legend>
 		<p class="mb-4 text-sm">
-			Minimum GPs + GP trainees who must be on routine clinics (no other role), every session.
+			Minimum GPs + GP trainees on routine clinics, every session. The duty doctor counts
+			towards this minimum; duty team and house visits don't.
 		</p>
 		<div class="grid max-w-md gap-4 sm:grid-cols-2">
 			<div>

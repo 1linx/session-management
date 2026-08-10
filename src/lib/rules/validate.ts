@@ -5,7 +5,9 @@
  *  R1  Each practice must have exactly one duty doctor per session, and the
  *      duty doctor must be a GP (not a trainee or ANP).
  *  R2  Each practice must have at least the configured minimum of GPs +
- *      GP trainees on routine clinics (role = none) per session.
+ *      GP trainees on routine clinics per session. The duty doctor counts
+ *      towards this minimum (they still see routine patients); duty team
+ *      and house-visit allocations do not.
  *  R3  East Calder duty team must meet the configured minimum per session
  *      (error) and ideally the desirable number (warning). ANPs working at
  *      East Calder are always on the duty team — one that isn't marked as
@@ -80,10 +82,12 @@ export function validateWeek(
 				});
 			}
 
-			// R2 — minimum routine clinicians.
+			// R2 — minimum routine clinicians. A duty GP counts: duty is worked
+			// alongside routine patients, unlike duty team / house visits.
 			const minRoutine = settings.minRoutineClinicians[practice] ?? 0;
 			const routineClinicians = here.filter(
-				(v) => v.cell.role === null && isClinician(v.member.category)
+				(v) =>
+					(v.cell.role === null || v.cell.role === 'duty') && isClinician(v.member.category)
 			);
 			if (routineClinicians.length < minRoutine) {
 				found.push({

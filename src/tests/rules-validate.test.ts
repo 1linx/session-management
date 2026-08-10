@@ -96,13 +96,13 @@ describe('R1 — duty doctor per practice', () => {
 });
 
 describe('R2 — minimum routine clinicians', () => {
-	it('counts only GPs/trainees with no role, per practice', () => {
+	it('counts GPs/trainees on routine or duty, per practice', () => {
 		const s = settings();
-		s.minRoutineClinicians.east_calder = 2;
+		s.minRoutineClinicians.east_calder = 3;
 		const problems = validateWeek(
 			[gp('a'), gp('b'), trainee('t'), anp('n'), gp('r')],
 			grid({
-				a: { '1:AM': 'working:east_calder:duty' }, // duty — not routine
+				a: { '1:AM': 'working:east_calder:duty' }, // duty — counts too
 				b: { '1:AM': 'working:east_calder' },
 				t: { '1:AM': 'working:east_calder' },
 				n: { '1:AM': 'working:east_calder:duty_team' }, // ANP — not a clinician
@@ -110,23 +110,40 @@ describe('R2 — minimum routine clinicians', () => {
 			}),
 			s
 		);
-		// b + t = 2 routine clinicians → satisfied.
+		// a + b + t = 3 → satisfied.
 		expect(problems['1:AM'] ?? []).toEqual([]);
 	});
 
-	it('flags a shortfall', () => {
+	it('a lone duty GP fulfils a minimum of 1 on their own', () => {
 		const s = settings();
 		s.minRoutineClinicians.ratho = 1;
 		const problems = validateWeek(
 			[gp('a'), gp('b')],
 			grid({
 				a: { '1:AM': 'working:east_calder:duty' },
-				b: { '1:AM': 'working:ratho:duty' } // duty, so 0 routine at Ratho
+				b: { '1:AM': 'working:ratho:duty' } // duty doubles as the routine GP
+			}),
+			s
+		);
+		expect(problems['1:AM'] ?? []).toEqual([]);
+	});
+
+	it('flags a shortfall — duty team and house visits do not count', () => {
+		const s = settings();
+		s.minRoutineClinicians.east_calder = 2;
+		const problems = validateWeek(
+			[gp('a'), gp('b'), gp('c')],
+			grid({
+				a: { '1:AM': 'working:east_calder:duty' },
+				b: { '1:AM': 'working:east_calder:house_visits' },
+				c: { '1:AM': 'working:east_calder:duty_team' }
 			}),
 			s
 		);
 		expect(
-			problems['1:AM'].some((p) => p.message === 'Ratho: 0 of 1 required routine GPs/trainees')
+			problems['1:AM'].some(
+				(p) => p.message === 'East Calder: 1 of 2 required routine GPs/trainees'
+			)
 		).toBe(true);
 	});
 });
@@ -230,17 +247,17 @@ describe('R4/R5 — house visits and misplaced roles', () => {
 
 	it('sick staff are not counted as working', () => {
 		const s = settings();
-		s.minRoutineClinicians.east_calder = 1;
+		s.minRoutineClinicians.east_calder = 2;
 		const problems = validateWeek(
 			[gp('a'), gp('b')],
 			grid({
-				a: { '1:AM': 'working:east_calder:duty' },
-				b: { '1:AM': 'sick' }
+				a: { '1:AM': 'working:east_calder:duty' }, // counts (duty)
+				b: { '1:AM': 'sick' } // does not
 			}),
 			s
 		);
 		expect(
-			problems['1:AM'].some((p) => p.message.includes('0 of 1 required routine'))
+			problems['1:AM'].some((p) => p.message.includes('1 of 2 required routine'))
 		).toBe(true);
 	});
 });

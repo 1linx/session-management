@@ -79,6 +79,17 @@ const routine = (ctx: Ctx, slot: string, practice: LocationValue) =>
 const routineClinicians = (ctx: Ctx, slot: string, practice: LocationValue) =>
 	routine(ctx, slot, practice).filter((m) => isClinician(m.category));
 
+/**
+ * Headcount that satisfies the routine-clinic minimum: GPs/trainees on
+ * routine OR on duty (a duty doctor still sees routine patients; duty team
+ * and house visits don't count).
+ */
+const routineMinCount = (ctx: Ctx, slot: string, practice: LocationValue) =>
+	workingAt(ctx, slot, practice).filter((m) => {
+		const role = cellOf(ctx, m.id, slot).role;
+		return isClinician(m.category) && (role === null || role === 'duty');
+	}).length;
+
 /** Lowest duty-per-session-worked first; stable on staff order for ties. */
 function byDutyFairness(ctx: Ctx) {
 	return (a: StaffMember, b: StaffMember) => {
@@ -150,8 +161,8 @@ function fixSlot(ctx: Ctx, slot: string) {
 			const candidates = routine(ctx, slot, practice)
 				.filter((m) => m.category === 'doctor')
 				.sort(byDutyFairness(ctx));
-			// Don't leave the routine minimum unmet by promoting the last clinician
-			// unless there is no other option — duty doctor outranks the minimum.
+			// Promoting to duty never breaks the routine minimum: a duty GP
+			// still counts towards it.
 			const pick = candidates[0];
 			if (pick) {
 				setCell(
@@ -170,7 +181,7 @@ function fixSlot(ctx: Ctx, slot: string) {
 						const ecDuty = workingAt(ctx, slot, 'east_calder').some(
 							(m) => cellOf(ctx, m.id, slot).role === 'duty'
 						);
-						const ecRoutineAfter = routineClinicians(ctx, slot, 'east_calder').length - 1;
+						const ecRoutineAfter = routineMinCount(ctx, slot, 'east_calder') - 1;
 						return ecDuty && ecRoutineAfter >= ctx.settings.minRoutineClinicians.east_calder;
 					});
 				if (traveller) {
@@ -192,10 +203,11 @@ function fixSlot(ctx: Ctx, slot: string) {
 	const team = () =>
 		workingAt(ctx, slot, 'east_calder').filter((m) => cellOf(ctx, m.id, slot).role === 'duty_team');
 	while (team().length < teamMin) {
-		const clinicians = routineClinicians(ctx, slot, 'east_calder');
-		if (clinicians.length - 1 < ctx.settings.minRoutineClinicians.east_calder) break;
-		const pick = clinicians[0];
+		const pick = routineClinicians(ctx, slot, 'east_calder')[0];
 		if (!pick) break;
+		// Moving them off routine must not break the routine minimum (duty
+		// GPs keep counting towards it, so only this pick drops out).
+		if (routineMinCount(ctx, slot, 'east_calder') - 1 < ctx.settings.minRoutineClinicians.east_calder) break;
 		setCell(
 			ctx,
 			pick,
@@ -212,12 +224,12 @@ function fixSlot(ctx: Ctx, slot: string) {
 			(m) => cellOf(ctx, m.id, slot).role === 'house_visits'
 		);
 	while (visits().length < visitsRequired) {
-		const clinicians = routineClinicians(ctx, slot, 'east_calder');
-		if (clinicians.length === 0) break;
-		if (clinicians.length - 1 < ctx.settings.minRoutineClinicians.east_calder) break;
+		const pick = routineClinicians(ctx, slot, 'east_calder')[0];
+		if (!pick) break;
+		if (routineMinCount(ctx, slot, 'east_calder') - 1 < ctx.settings.minRoutineClinicians.east_calder) break;
 		setCell(
 			ctx,
-			clinicians[0],
+			pick,
 			slot,
 			{ status: 'working', location: 'east_calder', role: 'house_visits' },
 			'allocated to house visits'

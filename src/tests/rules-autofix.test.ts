@@ -247,6 +247,26 @@ describe('autoFixWeek', () => {
 
 	it('respects the routine minimum when allocating house visits', () => {
 		const s = settings();
+		s.minRoutineClinicians.east_calder = 2;
+		s.houseVisitsRequired['1:AM'] = 2;
+		const staff = [gp('a'), gp('b'), gp('c')];
+		const { grid: fixed } = autoFixWeek(
+			staff,
+			grid({
+				a: { '1:AM': 'working:east_calder' },
+				b: { '1:AM': 'working:east_calder' },
+				c: { '1:AM': 'working:east_calder' }
+			}),
+			s
+		);
+		// One duty (counts towards the minimum of 2), so visits can only take
+		// one GP before the routine minimum bites.
+		const roles = ['a', 'b', 'c'].map((u) => fixed[u]['1:AM'].role).sort();
+		expect(roles).toEqual(['duty', 'house_visits', null].sort());
+	});
+
+	it('lets the duty GP satisfy the routine minimum on their own', () => {
+		const s = settings();
 		s.minRoutineClinicians.east_calder = 1;
 		s.houseVisitsRequired['1:AM'] = 2;
 		const staff = [gp('a'), gp('b'), gp('c')];
@@ -259,9 +279,9 @@ describe('autoFixWeek', () => {
 			}),
 			s
 		);
-		// One duty, and visits can only take one before the routine minimum bites.
+		// The duty GP covers the minimum of 1, freeing both others for visits.
 		const roles = ['a', 'b', 'c'].map((u) => fixed[u]['1:AM'].role).sort();
-		expect(roles).toEqual(['duty', 'house_visits', null].sort());
+		expect(roles).toEqual(['duty', 'house_visits', 'house_visits'].sort());
 	});
 
 	it('clears invalid roles before filling', () => {
