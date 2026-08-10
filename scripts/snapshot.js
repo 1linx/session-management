@@ -23,7 +23,8 @@ const db = new Database(dbPath, { readonly: true });
 
 const users = db
 	.prepare(
-		`SELECT name, initials, role, category, working_slots, can_work_ratho, leave_entitlement,
+		`SELECT name, initials, role, category, working_slots, can_work_ratho,
+		        duty_exempt_am, duty_exempt_pm, leave_entitlement,
 		        display_order, on_rota, active, password_hash
 		 FROM users ORDER BY display_order, initials`
 	)
