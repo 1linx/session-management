@@ -121,12 +121,14 @@
 		// A new week's data invalidates any previous auto-fix report.
 		void data.week;
 		autofixChanges = null;
-		usedDefaults = false;
+		filledFrom = null;
 	});
 
-	// "Use default values": fill the grid from everyone's standard availability
-	// as unsaved edits — nothing is stored until the admin presses Save.
-	let usedDefaults = $state(false);
+	// Empty-week bootstraps: fill the grid as unsaved edits — nothing is
+	// stored until the admin presses Save.
+	let filledFrom = $state<'defaults' | 'copy' | null>(null);
+
+	/** Everyone Working at their usual practice, from standard availability. */
 	function useDefaultValues() {
 		for (const user of data.rotaUsers) {
 			for (const slot of ALL_SLOTS) {
@@ -134,8 +136,39 @@
 				if (practice) cellValues[`${user.id}|${slot}`] = `working:${practice}`;
 			}
 		}
-		usedDefaults = true;
+		filledFrom = 'defaults';
 	}
+
+	/** Repeat the previous week's saved cells (sent by the load when empty). */
+	function copyFromPreviousWeek() {
+		if (!data.prevWeekGrid) return;
+		for (const user of data.rotaUsers) {
+			for (const slot of ALL_SLOTS) {
+				const key = data.prevWeekGrid[user.id]?.[slot];
+				if (key) cellValues[`${user.id}|${slot}`] = key;
+			}
+		}
+		filledFrom = 'copy';
+	}
+
+	// On entering an empty week, offer the bootstraps in a popup (same style
+	// as the cell picker). Dismissing it leaves a blank grid; the inline
+	// buttons under the table remain as a fallback. The offered flag stops
+	// data refreshes (saves, realtime pings) re-opening a dismissed popup,
+	// and is re-armed whenever the visible week has data — so returning to
+	// an empty week, or resetting this one, offers again.
+	let bootstrapDialog = $state<HTMLDialogElement | null>(null);
+	let bootstrapOfferedFor = $state<string | null>(null);
+	$effect(() => {
+		if (!isAdmin) return;
+		if (!data.weekIsEmpty) {
+			bootstrapOfferedFor = null;
+			return;
+		}
+		if (bootstrapOfferedFor === data.week) return;
+		bootstrapOfferedFor = data.week;
+		bootstrapDialog?.showModal();
+	});
 
 	function runAutoFix() {
 		const { changes } = autoFixWeek(staffForRules, currentGrid(), data.ruleSettings, {
@@ -267,13 +300,11 @@
 <p aria-live="polite" role="status" class="mb-4">
 	{#if form?.saved && !dirty}
 		<span class="inline-block border-2 border-ink bg-mint px-3 py-1 font-bold">Rota saved.</span>
-	{:else if form?.copied}
-		<span class="inline-block border-2 border-ink bg-mint px-3 py-1 font-bold">
-			Copied from the previous week — remember to Save any further changes.
-		</span>
-	{:else if usedDefaults && dirty}
+	{:else if filledFrom && dirty}
 		<span class="inline-block border-2 border-ink bg-accent px-3 py-1 font-bold">
-			Filled in from standard availability as unsaved edits — review, then press Save.
+			{filledFrom === 'defaults'
+				? 'Filled in from standard availability'
+				: 'Copied from the previous week'} as unsaved edits — review, then press Save.
 		</span>
 	{:else if autofixChanges !== null && autofixChanges.length === 0}
 		<span class="inline-block border-2 border-ink bg-accent px-3 py-1 font-bold">
@@ -455,16 +486,16 @@
 		<p class="mb-2 text-sm font-bold">This week has no rota yet. Start from:</p>
 		<div class="flex flex-wrap gap-3">
 			<button type="button" class="nb-btn" onclick={useDefaultValues}>Use default values</button>
-			<form method="POST" action={`?week=${data.week}&/copyWeek`} use:enhance>
-				<input type="hidden" name="week" value={data.week} />
-				<button class="nb-btn nb-btn-secondary">
+			{#if data.prevWeekGrid}
+				<button type="button" class="nb-btn nb-btn-secondary" onclick={copyFromPreviousWeek}>
 					Copy from week commencing {weekLabel(prevWeek)}
 				</button>
-			</form>
+			{/if}
 		</div>
 		<p class="mt-2 max-w-prose text-sm">
 			Default values mark everyone as Working at their usual practice on the sessions they
-			normally work, from their user settings — as unsaved edits for you to review, then Save.
+			normally work, from their user settings. Either way the grid fills as unsaved edits for
+			you to review, then Save.
 		</p>
 	</div>
 {/if}
@@ -610,4 +641,57 @@
 			{/if}
 		</div>
 	{/if}
+</dialog>
+
+<!-- Empty-week bootstrap: offered once per empty week. Both choices fill
+     the grid as unsaved edits — nothing is stored until Save. -->
+<dialog
+	bind:this={bootstrapDialog}
+	class="m-auto w-[min(100%-1.5rem,26rem)] border-4 border-ink bg-paper p-0 shadow-brutal backdrop:bg-ink/60"
+>
+	<div class="flex items-center justify-between gap-4 border-b-2 border-ink bg-lilac px-4 py-3">
+		<h2 class="font-black uppercase">
+			Start this week
+			<span class="block text-xs font-bold tracking-widest">No sessions set yet</span>
+		</h2>
+		<button
+			type="button"
+			class="cursor-pointer border-2 border-ink bg-white px-2 py-0.5 font-bold shadow-brutal-sm"
+			aria-label="Close and start from a blank grid"
+			onclick={() => bootstrapDialog?.close()}
+		>
+			✕
+		</button>
+	</div>
+	<div class="flex flex-col gap-2.5 p-4">
+		<button
+			type="button"
+			class="w-full cursor-pointer border-2 border-ink bg-mint px-3 py-3 text-left font-bold shadow-brutal-sm hover:-translate-x-0.5 hover:-translate-y-0.5"
+			onclick={() => {
+				useDefaultValues();
+				bootstrapDialog?.close();
+			}}
+		>
+			Use default values
+			<span class="block text-xs font-normal">
+				Everyone Working at their usual practice, from their user settings.
+			</span>
+		</button>
+		{#if data.prevWeekGrid}
+			<button
+				type="button"
+				class="w-full cursor-pointer border-2 border-ink bg-sky px-3 py-3 text-left font-bold shadow-brutal-sm hover:-translate-x-0.5 hover:-translate-y-0.5"
+				onclick={() => {
+					copyFromPreviousWeek();
+					bootstrapDialog?.close();
+				}}
+			>
+				Copy from previous week
+				<span class="block text-xs font-normal">
+					Repeat week commencing {weekLabel(prevWeek)}, including duty and roles.
+				</span>
+			</button>
+		{/if}
+		<p class="text-xs">Nothing is saved until you press Save rota — or close this to start blank.</p>
+	</div>
 </dialog>

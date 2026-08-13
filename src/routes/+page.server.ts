@@ -78,15 +78,40 @@ export const load: PageServerLoad = async ({ url }) => {
 		);
 	}
 
+	// A week whose entries are all "Not working" counts as empty — that's
+	// what "Reset week" + Save leaves behind — so the bootstrap offers
+	// (popup + buttons) come back. [] is trivially all-not-working.
+	const weekIsEmpty = entries.every((e) => e.status === 'not_working');
+
+	// For an empty week, also send the previous week's cells so the client
+	// can offer "copy from previous week" as unsaved edits (no server write).
+	// null = previous week has nothing worth copying (empty or fully reset).
+	let prevWeekGrid: Record<string, Record<string, string>> | null = null;
+	if (weekIsEmpty) {
+		const prevEntries = await entriesForWeek(
+			addWeeks(week, -1),
+			rotaUsers.map((u) => u.id)
+		);
+		if (prevEntries.some((e) => e.status !== 'not_working')) {
+			prevWeekGrid = {};
+			for (const entry of prevEntries) {
+				(prevWeekGrid[entry.userId] ??= {})[`${entry.weekday}:${entry.period}`] = encodeCell(
+					toCellValue(entry)
+				);
+			}
+		}
+	}
+
 	return {
 		rotaUsers: rotaUsers.map((u) => ({
 			...u,
 			standardSlots: JSON.parse(u.standardSlots) as StandardSlots
 		})),
 		grid,
+		prevWeekGrid,
 		week,
 		currentWeek: currentWeekStart(),
-		weekIsEmpty: entries.length === 0,
+		weekIsEmpty,
 		ruleSettings: await getRuleSettings(),
 		// Duty-balancing context for Auto-fix: historical tallies (this week
 		// excluded — the live grid supplies it) + last week's duty slots.
@@ -139,46 +164,7 @@ export const actions: Actions = {
 		return { saved: true };
 	},
 
-	// "Use default values" is client-side: it fills the grid from standard
-	// availability as unsaved edits, so the admin reviews and Saves manually.
-
-	/** Populate an empty week from the week before it. */
-	copyWeek: async ({ request, locals }) => {
-		if (locals.user?.role !== 'admin') {
-			return fail(403, { message: 'Only admins can edit the rota.' });
-		}
-
-		const data = await request.formData();
-		const week = weekFromForm(data);
-		if (!week) return fail(400, { message: 'Invalid week.' });
-
-		const rotaUsers = await loadRotaUsers();
-		const userIds = rotaUsers.map((u) => u.id);
-
-		const existing = await entriesForWeek(week, userIds);
-		if (existing.length > 0) {
-			return fail(400, { message: 'This week already has entries — copy is only for empty weeks.' });
-		}
-
-		const sourceWeek = addWeeks(week, -1);
-		const source = await entriesForWeek(sourceWeek, userIds);
-		if (source.length === 0) {
-			return fail(400, { message: 'The previous week is empty — nothing to copy.' });
-		}
-
-		await db.insert(scheduleEntries).values(
-			source.map((entry) => ({
-				userId: entry.userId,
-				weekStart: week,
-				weekday: entry.weekday,
-				period: entry.period,
-				status: entry.status,
-				location: entry.location,
-				role: entry.role
-			}))
-		);
-
-		broadcastChange('rota');
-		return { copied: true };
-	}
+	// "Use default values" and "Copy from previous week" are client-side:
+	// they fill the grid as unsaved edits (the load sends the previous
+	// week's cells for the latter), so the admin reviews and Saves manually.
 };

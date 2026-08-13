@@ -20,6 +20,7 @@ type SaveEvent = Parameters<(typeof actions)['save']>[0];
 type LoadResult = {
 	rotaUsers: { id: string; initials: string; standardSlots: Record<string, string> }[];
 	grid: Record<string, Record<string, string>>;
+	prevWeekGrid: Record<string, Record<string, string>> | null;
 	week: string;
 	currentWeek: string;
 	weekIsEmpty: boolean;
@@ -317,61 +318,60 @@ describe('rota save action', () => {
 // manual Save) so it has no server action to test — the save action above
 // covers persisting what it fills in.
 
-describe('copyWeek action', () => {
+// "Copy from previous week" is also client-side; the load supplies the
+// previous week's cells (prevWeekGrid) only when the viewed week is empty.
+describe('prevWeekGrid in the load', () => {
 	beforeEach(resetDb);
 
-	const copyEvent = (locals: object, week: string) =>
-		({ request: formRequest({ week }), locals }) as unknown as Parameters<
-			(typeof actions)['copyWeek']
-		>[0];
-
-	it('copies the previous week into an empty week', async () => {
-		const admin = await createUser({ role: 'admin' });
+	it('sends the previous week’s encoded cells for an empty week', async () => {
 		const user = await createUser();
 		await createEntry(user.id, 1, 'AM', { location: 'ratho', role: 'duty' });
 		await createEntry(user.id, 2, 'PM', { status: 'not_working', location: null });
-		const nextWeek = addWeeks(thisWeek, 1);
 
-		const result = await actions.copyWeek(copyEvent(adminLocals(admin.id), nextWeek));
-		expect(result).toMatchObject({ copied: true });
-
-		const copied = await db
-			.select()
-			.from(scheduleEntries)
-			.where(eq(scheduleEntries.weekStart, nextWeek));
-		expect(copied).toHaveLength(2);
-		expect(copied.find((r) => r.weekday === 1)).toMatchObject({ location: 'ratho', role: 'duty' });
-		expect(copied.find((r) => r.weekday === 2)).toMatchObject({ status: 'not_working' });
+		const data = await runLoad(addWeeks(thisWeek, 1));
+		expect(data.weekIsEmpty).toBe(true);
+		expect(data.prevWeekGrid?.[user.id]).toEqual({
+			'1:AM': 'working:ratho:duty',
+			'2:PM': 'not_working'
+		});
 	});
 
-	it('refuses when the target week already has entries', async () => {
-		const admin = await createUser({ role: 'admin' });
-		const user = await createUser();
-		const nextWeek = addWeeks(thisWeek, 1);
-		await createEntry(user.id, 1, 'AM'); // source
-		await createEntry(user.id, 1, 'PM', { weekStart: nextWeek }); // target not empty
-
-		const result = await actions.copyWeek(copyEvent(adminLocals(admin.id), nextWeek));
-		expect(result).toMatchObject({ status: 400 });
-	});
-
-	it('refuses when the previous week is empty', async () => {
-		const admin = await createUser({ role: 'admin' });
+	it('is null when the previous week has nothing to copy', async () => {
 		await createUser();
-
-		const result = await actions.copyWeek(
-			copyEvent(adminLocals(admin.id), addWeeks(thisWeek, 5))
-		);
-		expect(result).toMatchObject({ status: 400 });
+		const data = await runLoad(addWeeks(thisWeek, 5));
+		expect(data.prevWeekGrid).toBeNull();
 	});
 
-	it('refuses viewers', async () => {
-		const viewer = await createUser();
-		await createEntry(viewer.id, 1, 'AM');
+	it('is null when the viewed week already has entries', async () => {
+		const user = await createUser();
+		await createEntry(user.id, 1, 'AM');
+		await createEntry(user.id, 1, 'PM', { weekStart: addWeeks(thisWeek, 1) });
 
-		const result = await actions.copyWeek(
-			copyEvent(viewerLocals(viewer.id), addWeeks(thisWeek, 1))
-		);
-		expect(result).toMatchObject({ status: 403 });
+		const data = await runLoad(addWeeks(thisWeek, 1));
+		expect(data.weekIsEmpty).toBe(false);
+		expect(data.prevWeekGrid).toBeNull();
+	});
+
+	it('treats a fully reset week (all Not working) as empty again', async () => {
+		const user = await createUser();
+		await createEntry(user.id, 1, 'AM'); // previous week has real data
+		await createEntry(user.id, 1, 'AM', {
+			weekStart: addWeeks(thisWeek, 1),
+			status: 'not_working',
+			location: null
+		});
+
+		const data = await runLoad(addWeeks(thisWeek, 1));
+		expect(data.weekIsEmpty).toBe(true);
+		expect(data.prevWeekGrid?.[user.id]?.['1:AM']).toBe('working:east_calder');
+	});
+
+	it('does not offer a fully reset previous week for copying', async () => {
+		const user = await createUser();
+		await createEntry(user.id, 1, 'AM', { status: 'not_working', location: null });
+
+		const data = await runLoad(addWeeks(thisWeek, 1));
+		expect(data.weekIsEmpty).toBe(true);
+		expect(data.prevWeekGrid).toBeNull();
 	});
 });
