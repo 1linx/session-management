@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { tick } from 'svelte';
+	import { SvelteSet } from 'svelte/reactivity';
 	import { enhance } from '$app/forms';
 	import { beforeNavigate } from '$app/navigation';
 	import {
@@ -118,10 +119,13 @@
 	// "Unsaved changes — press Save" flow takes over for review + persist.
 	let autofixChanges = $state<string[] | null>(null);
 	$effect(() => {
-		// A new week's data invalidates any previous auto-fix report.
+		// A new week's data invalidates any previous auto-fix report and
+		// cell selection (the clipboard survives — pasting across weeks is
+		// legitimate).
 		void data.week;
 		autofixChanges = null;
 		filledFrom = null;
+		clearSelection();
 	});
 
 	// Empty-week bootstraps: fill the grid as unsaved edits — nothing is
@@ -192,16 +196,122 @@
 		autofixChanges = changes.map((c) => `${c.initials}, ${slotLabel(c.slot)}: ${c.reason}`);
 	}
 
+	// --- Cell selection, copy & paste ---
+	// A click selects the cell (⌘/Ctrl-click adds/removes, ⇧-click selects
+	// the rectangle from the last-clicked cell); editing goes through the
+	// selection toolbar's "Set value…" (or double-click as a shortcut).
+	// Everything applies as unsaved edits.
+	const selected = new SvelteSet<string>();
+	let selectionAnchor: { row: number; col: number } | null = null;
+	let copied = $state<string | null>(null);
+	/** Screen-reader announcements for selection/copy/paste actions. */
+	let announce = $state('');
+
+	const copiedLabel = $derived(copied ? cellLabel(decodeCell(copied) ?? NOT_WORKING) : null);
+
+	function clearSelection() {
+		selected.clear();
+		selectionAnchor = null;
+	}
+
+	function handleCellClick(
+		event: MouseEvent,
+		user: (typeof data.rotaUsers)[number],
+		row: (typeof rows)[number],
+		rowIdx: number,
+		colIdx: number
+	) {
+		const cellId = `${user.id}|${row.slot}`;
+		if (event.metaKey || event.ctrlKey) {
+			if (selected.has(cellId)) selected.delete(cellId);
+			else selected.add(cellId);
+			selectionAnchor = { row: rowIdx, col: colIdx };
+			announce = `${selected.size} cell${selected.size === 1 ? '' : 's'} selected`;
+			return;
+		}
+		if (event.shiftKey && selectionAnchor) {
+			selected.clear();
+			const [r1, r2] = [selectionAnchor.row, rowIdx].sort((a, b) => a - b);
+			const [c1, c2] = [selectionAnchor.col, colIdx].sort((a, b) => a - b);
+			for (let r = r1; r <= r2; r += 1) {
+				for (let c = c1; c <= c2; c += 1) {
+					selected.add(`${data.rotaUsers[c].id}|${rows[r].slot}`);
+				}
+			}
+			announce = `${selected.size} cells selected`;
+			return;
+		}
+		// Plain click: select just this cell.
+		selected.clear();
+		selected.add(cellId);
+		selectionAnchor = { row: rowIdx, col: colIdx };
+		announce = `Selected ${user.initials}, ${row.label}`;
+	}
+
+	function copyCell(cellId: string) {
+		copied = cellValues[cellId] ?? 'not_working';
+		announce = `Copied ${cellLabel(decodeCell(copied) ?? NOT_WORKING)}`;
+	}
+
+	function pasteTo(cellIds: string[]) {
+		if (!copied || cellIds.length === 0) return;
+		for (const cellId of cellIds) cellValues[cellId] = copied;
+		announce = `Pasted ${copiedLabel} to ${cellIds.length} cell${cellIds.length === 1 ? '' : 's'}`;
+	}
+
+	/** Enter opens the picker for the focused cell (Space selects, via the
+	 *  button's native click); ⌘/Ctrl+C copies the focused cell; ⌘/Ctrl+V
+	 *  pastes to the selection, or to the focused cell when nothing is
+	 *  selected. */
+	function handleCellKeydown(
+		event: KeyboardEvent,
+		cellId: string,
+		user: (typeof data.rotaUsers)[number],
+		row: (typeof rows)[number]
+	) {
+		if (event.key === 'Enter' && !event.metaKey && !event.ctrlKey && !event.shiftKey) {
+			event.preventDefault(); // stops the synthesised click from re-selecting
+			openPicker(user, row);
+			return;
+		}
+		if (!(event.metaKey || event.ctrlKey)) return;
+		const k = event.key.toLowerCase();
+		if (k === 'c') {
+			event.preventDefault();
+			copyCell(cellId);
+		} else if (k === 'v') {
+			event.preventDefault();
+			pasteTo(selected.size > 0 ? [...selected] : [cellId]);
+		}
+	}
+
 	// --- Status picker dialog (two stages: pick a group, then the detail) ---
 	let dialog = $state<HTMLDialogElement>();
 	let dialogBody = $state<HTMLElement>();
-	let picker = $state<{ cellKey: string; title: string; group: string | null } | null>(null);
+	let picker = $state<{
+		cellKey: string | null;
+		title: string;
+		group: string | null;
+		forSelection?: boolean;
+	} | null>(null);
 
 	function openPicker(user: { id: string; initials: string }, row: (typeof rows)[number]) {
 		picker = {
 			cellKey: `${user.id}|${row.slot}`,
 			title: `${user.initials} — ${row.label}`,
 			group: null // stage 1: choose East Calder / Ratho / Not available
+		};
+		dialog?.showModal();
+	}
+
+	/** "Set value…" for the current selection: pick once, apply to all. */
+	function openPickerForSelection() {
+		if (selected.size === 0) return;
+		picker = {
+			cellKey: null,
+			title: `${selected.size} selected cell${selected.size === 1 ? '' : 's'}`,
+			group: null,
+			forSelection: true
 		};
 		dialog?.showModal();
 	}
@@ -224,8 +334,13 @@
 	}
 
 	function choose(key: string) {
-		if (picker) cellValues[picker.cellKey] = key;
-		dialog?.close(); // native <dialog> returns focus to the cell button
+		if (picker?.forSelection) {
+			for (const cellId of selected) cellValues[cellId] = key;
+			announce = `Set ${selected.size} cells to ${cellLabel(decodeCell(key) ?? NOT_WORKING)}`;
+		} else if (picker?.cellKey) {
+			cellValues[picker.cellKey] = key;
+		}
+		dialog?.close(); // native <dialog> returns focus to the opening button
 	}
 
 	/** The group the cell's current value belongs to, for the ✓ hint on stage 1. */
@@ -306,6 +421,18 @@
 		Export this week (.xlsx)
 	</a>
 </nav>
+
+<svelte:window
+	onkeydown={(e) => {
+		if (e.key === 'Escape' && selected.size > 0 && !dialog?.open && !bootstrapDialog?.open) {
+			clearSelection();
+			announce = 'Selection cleared';
+		}
+	}}
+/>
+
+<!-- Announces selection / copy / paste actions to screen readers. -->
+<p class="sr-only" aria-live="polite" role="status">{announce}</p>
 
 <p aria-live="polite" role="status" class="mb-4">
 	{#if form?.saved && !dirty}
@@ -394,7 +521,7 @@
 				</tr>
 			</thead>
 			<tbody>
-				{#each rows as row (row.label)}
+				{#each rows as row, rowIdx (row.label)}
 					{@const hasErrors = slotHasErrors(problems, row.slot)}
 					<tr class={hasErrors ? 'rule-fail' : ''}>
 						<th
@@ -412,23 +539,25 @@
 								{dayDateLabel(data.week, row.day.value)} · {row.period.times}
 							</span>
 						</th>
-						{#each data.rotaUsers as user (user.id)}
+						{#each data.rotaUsers as user, colIdx (user.id)}
+							{@const cellId = `${user.id}|${row.slot}`}
 							{@const isStandard = row.slot in user.standardSlots}
-							{@const key = cellValues[`${user.id}|${row.slot}`] ?? 'not_working'}
+							{@const key = cellValues[cellId] ?? 'not_working'}
 							{@const isOff = (decodeCell(key) ?? NOT_WORKING).status === 'not_working'}
+							{@const isSelected = selected.has(cellId)}
 							<td
-								class="border-r-2 border-b-2 border-ink p-0 text-center has-[button:hover]:shadow-[inset_0_0_0_3px_var(--color-ink)] {isOff &&
-								!isStandard
-									? 'bg-neutral-200'
-									: classesFor(key)}"
+								class="border-r-2 border-b-2 border-ink p-0 text-center has-[button:hover]:shadow-[inset_0_0_0_3px_var(--color-ink)] {isSelected
+									? 'cell-selected'
+									: ''} {isOff && !isStandard ? 'bg-neutral-200' : classesFor(key)}"
 							>
 								{#if isAdmin}
 									<button
 										type="button"
 										class="block h-full w-full min-w-32 cursor-pointer px-2 py-2.5"
-										aria-haspopup="dialog"
-										aria-label={`${user.initials}, ${row.label}: ${cellLabel(decodeCell(key) ?? NOT_WORKING)}${isStandard ? '' : ' (not a standard session)'}. Change status`}
-										onclick={() => openPicker(user, row)}
+										aria-label={`${user.initials}, ${row.label}: ${cellLabel(decodeCell(key) ?? NOT_WORKING)}${isStandard ? '' : ' (not a standard session)'}${isSelected ? ' (selected)' : ''}. Select`}
+										onclick={(e) => handleCellClick(e, user, row, rowIdx, colIdx)}
+										ondblclick={() => openPicker(user, row)}
+										onkeydown={(e) => handleCellKeydown(e, cellId, user, row)}
 									>
 										{@render cellContent(key)}
 									</button>
@@ -448,6 +577,40 @@
 		</table>
 	</div>
 
+	{#if isAdmin && selected.size > 0}
+		<div
+			role="toolbar"
+			aria-label="Selected cells"
+			class="mt-3 flex flex-wrap items-center gap-3 border-2 border-ink bg-lilac px-3 py-2 shadow-brutal-sm"
+		>
+			<span class="text-sm font-bold">
+				{selected.size} cell{selected.size === 1 ? '' : 's'} selected
+			</span>
+			<button type="button" class="nb-btn px-3 py-1 text-xs" onclick={openPickerForSelection}>
+				Set value…
+			</button>
+			<button
+				type="button"
+				class="nb-btn nb-btn-secondary px-3 py-1 text-xs disabled:cursor-not-allowed disabled:bg-neutral-200 disabled:text-neutral-600 disabled:shadow-none"
+				disabled={selected.size !== 1}
+				onclick={() => copyCell([...selected][0])}
+			>
+				Copy
+			</button>
+			<button
+				type="button"
+				class="nb-btn nb-btn-secondary px-3 py-1 text-xs disabled:cursor-not-allowed disabled:bg-neutral-200 disabled:text-neutral-600 disabled:shadow-none"
+				disabled={!copied}
+				onclick={() => pasteTo([...selected])}
+			>
+				Paste{copiedLabel ? `: ${copiedLabel}` : ''}
+			</button>
+			<button type="button" class="nb-btn nb-btn-secondary px-3 py-1 text-xs" onclick={clearSelection}>
+				Clear
+			</button>
+		</div>
+	{/if}
+
 	{#if isAdmin}
 		<div class="mt-4 flex flex-wrap items-center gap-4">
 			<button
@@ -463,6 +626,13 @@
 				<span class="text-sm text-neutral-700">No unsaved changes</span>
 			{/if}
 		</div>
+		<p class="mt-2 text-xs text-neutral-700">
+			Click selects a cell — ⌘/Ctrl-click adds more, ⇧-click a range, Esc clears. Set values via
+			the selection bar, or double-click / press Enter on a cell. ⌘/Ctrl+C copies the focused
+			cell, ⌘/Ctrl+V pastes to it or the selection{copiedLabel
+				? ` — clipboard: ${copiedLabel}`
+				: ''}.
+		</p>
 	{/if}
 </form>
 
@@ -586,7 +756,7 @@
 	onclose={() => (picker = null)}
 >
 	{#if picker}
-		{@const current = cellValues[picker.cellKey] ?? 'not_working'}
+		{@const current = picker.cellKey ? (cellValues[picker.cellKey] ?? 'not_working') : ''}
 		<div class="flex items-center justify-between gap-4 border-b-2 border-ink bg-lilac px-4 py-3">
 			<h2 class="font-black uppercase">
 				{picker.title}

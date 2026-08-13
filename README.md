@@ -74,8 +74,13 @@ scp scripts/seed-data.json foundry:session-management/scripts/
   week in UK time, with previous/next navigation. Entering an empty week
   offers "Use default values" (with or without an Auto-fix pass on top),
   filling the grid as unsaved edits.
-- **Sessions**: each weekday splits into AM (8am–1pm) and PM (1pm–6pm),
-  set via a popout picker on each rota cell. New statuses, locations or
+- **Sessions**: each weekday splits into AM (8am–1pm) and PM (1pm–6pm).
+  Clicking a rota cell selects it (⌘/Ctrl-click adds more, ⇧-click a
+  rectangle, Esc clears); a selection toolbar then offers Set value…
+  (the popout picker, applied to every selected cell), Copy and Paste —
+  with ⌘/Ctrl+C/V shortcuts, and double-click/Enter opening the picker
+  for one cell. All of it lands as unsaved edits.
+  New statuses, locations or
   roles: extend `CellValue`/`CELL_OPTIONS` in [src/lib/constants.ts](src/lib/constants.ts).
 - **Live updates**: when an admin saves the rota or edits users, every
   signed-in viewer's page refreshes automatically via a pub/sub channel on
