@@ -322,7 +322,11 @@
 	{/if}
 
 	<div class="nb-scroll border-2 border-ink bg-white shadow-brutal">
-		<table class="w-full border-collapse text-sm">
+		<!-- border-separate (not collapse): collapsed borders don't travel with
+		     position:sticky cells, which would leave the frozen Session column
+		     borderless while scrolled. Each cell owns its right/bottom edge
+		     instead, which renders the same 2px grid. -->
+		<table class="w-full border-separate border-spacing-0 text-sm">
 			<caption class="border-b-2 border-ink bg-paper px-3 py-2 text-left font-bold">
 				Sessions for all staff. AM is 8am–1pm, PM is 1pm–6pm. Greyed cells are outside that
 				person's standard sessions but can still be set. Rows outlined in red break a staffing
@@ -330,11 +334,14 @@
 			</caption>
 			<thead>
 				<tr>
-					<th scope="col" class="border-2 border-ink bg-accent px-3 py-2 text-left uppercase">
+					<th
+						scope="col"
+						class="sticky left-0 z-10 border-r-2 border-b-2 border-ink bg-accent px-3 py-2 text-left uppercase"
+					>
 						Session
 					</th>
 					{#each data.rotaUsers as user (user.id)}
-						<th scope="col" class="border-2 border-ink bg-accent px-3 py-2 text-center">
+						<th scope="col" class="border-r-2 border-b-2 border-ink bg-accent px-3 py-2 text-center">
 							<span class="block text-base font-black">{user.initials}</span>
 							<span class="block text-xxs font-bold uppercase">{categoryLabel(user.category)}</span>
 						</th>
@@ -347,7 +354,7 @@
 					<tr class={hasErrors ? 'rule-fail' : ''}>
 						<th
 							scope="row"
-							class="border-2 border-ink px-3 py-2 text-left whitespace-nowrap {hasErrors
+							class="sticky left-0 z-10 border-r-2 border-b-2 border-ink px-3 py-2 text-left whitespace-nowrap {hasErrors
 								? 'bg-coral'
 								: 'bg-paper'}"
 						>
@@ -365,7 +372,7 @@
 							{@const key = cellValues[`${user.id}|${row.slot}`] ?? 'not_working'}
 							{@const isOff = (decodeCell(key) ?? NOT_WORKING).status === 'not_working'}
 							<td
-								class="border-2 border-ink p-0 text-center has-[button:hover]:shadow-[inset_0_0_0_3px_var(--color-ink)] {isOff &&
+								class="border-r-2 border-b-2 border-ink p-0 text-center has-[button:hover]:shadow-[inset_0_0_0_3px_var(--color-ink)] {isOff &&
 								!isStandard
 									? 'bg-neutral-200'
 									: classesFor(key)}"
