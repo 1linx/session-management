@@ -398,6 +398,42 @@ describe('autoFixWeek', () => {
 		expect(fixed['b']['1:AM'].role).toBeNull();
 	});
 
+	it('tops the duty team up with the lowest-tally GP, not staff order', () => {
+		const s = settings();
+		s.dutyTeamMin['1:AM'] = 1;
+		// d already holds duty; a is first in staff order but far ahead on
+		// the tally, so the team place goes to b.
+		const staff = [gp('a'), gp('b'), gp('d')];
+		const { grid: fixed } = autoFixWeek(
+			staff,
+			grid({
+				a: { '1:AM': 'working:east_calder' },
+				b: { '1:AM': 'working:east_calder' },
+				d: { '1:AM': 'working:east_calder:duty' }
+			}),
+			s,
+			{ tallies: { a: { worked: 10, duty: 5 }, b: { worked: 10, duty: 0 } } }
+		);
+		expect(fixed['b']['1:AM'].role).toBe('duty_team');
+		expect(fixed['a']['1:AM'].role).toBeNull();
+	});
+
+	it('never puts a trainee on the duty team', () => {
+		const s = settings();
+		s.dutyTeamMin['1:PM'] = 1;
+		const staff = [gp('a'), trainee('t')];
+		const { grid: fixed } = autoFixWeek(
+			staff,
+			grid({
+				a: { '1:PM': 'working:east_calder:duty' },
+				t: { '1:PM': 'working:east_calder' }
+			}),
+			s
+		);
+		// The team stays short rather than using the trainee.
+		expect(fixed['t']['1:PM'].role).toBeNull();
+	});
+
 	it('tops the duty team up with GPs once the ANPs are on it', () => {
 		const s = settings();
 		s.dutyTeamMin['1:AM'] = 2;

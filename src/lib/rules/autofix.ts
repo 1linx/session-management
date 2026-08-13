@@ -23,8 +23,9 @@
  *      Ratho has none, a routine East Calder GP with canWorkRatho (same
  *      exclusion applies) is relocated — but only if East Calder still
  *      meets its own duty + routine minimum afterwards.
- *   3. Top the East Calder duty team up to its minimum with routine
- *      GPs/trainees (every EC ANP is already on it after step 1), never
+ *   3. Top the East Calder duty team up to its minimum with routine GPs
+ *      (never trainees; every EC ANP is already on it after step 1),
+ *      lowest Duty Tally first — team sessions count as duty — and never
  *      dropping routine clinicians below the configured minimum.
  *   4. Fill East Calder house visits: routine GPs/trainees only, same
  *      minimum-preserving constraint. GP trainees working at EC are
@@ -274,9 +275,12 @@ function fixSlot(ctx: Ctx, slot: string) {
 	const team = () =>
 		workingAt(ctx, slot, 'east_calder').filter((m) => cellOf(ctx, m.id, slot).role === 'duty_team');
 	while (team().length < teamMin) {
-		const pick = routineClinicians(ctx, slot, 'east_calder').filter(
-			(m) => !m.dutyExempt[slotPeriod(slot)]
-		)[0];
+		// GPs only (trainees never join the team), lowest Duty Tally first —
+		// team sessions count as duty, so the top-up must spread by the same
+		// fairness as duty itself (setCell keeps the tally current).
+		const pick = routine(ctx, slot, 'east_calder')
+			.filter((m) => m.category === 'doctor' && !m.dutyExempt[slotPeriod(slot)])
+			.sort(byDutyFairness(ctx, slot))[0];
 		if (!pick) break;
 		// Moving them off routine must not break the routine minimum (duty
 		// GPs keep counting towards it, so only this pick drops out).

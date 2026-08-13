@@ -38,7 +38,7 @@ npm-debug.log*
 ~$*.xlsx
 
 # Claude Code local settings (machine-specific permissions)
-.claude/settings.local.json
+.claude/
 
 # Project brief (kept locally, not part of the repo)
 INSTRUCTIONS.md

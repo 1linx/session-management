@@ -103,7 +103,8 @@ Rules implemented (configurable on the Staffing rules page unless noted):
    team and house visits don't.
 3. EC duty team minimum (error) and desirable (warning) per session.
    ANPs working at EC are always on the duty team (Auto-fix marks them;
-   validation warns when one isn't); GPs top the team up to the minimum.
+   validation warns when one isn't); GPs top the team up to the minimum,
+   lowest Duty Tally first (never trainees).
 4. EC house-visit allocations per session, GPs/trainees only. Trainees
    count as half a GP, rounded down (2 trainees = 1 GP; 3 still = 1), and
    trainees working at EC always do house visits in AM sessions.
