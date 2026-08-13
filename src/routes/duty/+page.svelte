@@ -23,7 +23,8 @@
 	duty sessions ÷ sessions worked, counting <strong>East Calder sessions only</strong> (Ratho
 	duty falls to whoever is on site, so it would skew the balance) and counting a duty-team
 	session the same as duty. Someone working twice the EC sessions is expected to carry twice
-	the duty. Near-equal tallies avoid repeating the slot a doctor held the previous week.
+	the duty. Doctors aren't given AM and PM duty on the same day unless unavoidable, and
+	near-equal tallies avoid repeating the slot a doctor held the previous week.
 </p>
 
 <section aria-label="Duty tally" class="mb-8">

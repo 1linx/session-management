@@ -38,12 +38,14 @@
  * same as duty — both are the extra commitment being balanced), seeded
  * from up to a year of saved history (see
  * $lib/server/duty-history.ts) plus this week's grid, updating live as
- * fixes are applied. The candidate with the lowest DT gets duty, so duty
- * spreads proportionately to how much each person works. Tallies within
- * 0.02 of each other are treated as equal, and within such a band the pick
- * avoids giving anyone the same duty slot they held the previous week
- * (doctors dislike repeating slots week after week — a preference, never
- * a rule: a clearly lower tally still wins).
+ * fixes are applied. A doctor already on duty in the other half of the
+ * same day is passed over whenever another candidate exists (no AM+PM
+ * duty on one day unless unavoidable). Otherwise the candidate with the
+ * lowest DT gets duty, so duty spreads proportionately to how much each
+ * person works. Tallies within 0.02 of each other are treated as equal,
+ * and within such a band the pick avoids giving anyone the same duty slot
+ * they held the previous week (doctors dislike repeating slots week after
+ * week — a preference, never a rule: a clearly lower tally still wins).
  *
  * Anything it cannot fix (e.g. no GP available for Ratho duty) is left
  * as-is and will still be flagged red by validation.
@@ -112,17 +114,27 @@ const routineMinCount = (ctx: Ctx, slot: string, practice: LocationValue) =>
 	}).length;
 
 /**
- * Lowest Duty Tally (duty ÷ sessions worked) first. Tallies are compared
- * in bands of 0.02 — exact float ratios almost never tie, so without the
- * bands the rotation preference below would never engage. Within a band,
- * whoever did NOT hold duty in this same slot last week comes first; then
- * the exact tally; ties beyond that keep staff order (sort is stable).
+ * Duty candidate order:
+ * 1. Anyone already on duty in the OTHER half of the same day goes to the
+ *    back — doctors shouldn't do AM and PM duty on the same day. This
+ *    outranks the tally (the tally self-corrects later), but consecutive
+ *    duty still happens when there is no other candidate ("unavoidable").
+ * 2. Lowest Duty Tally (duty ÷ sessions worked), compared in bands of
+ *    0.02 — exact float ratios almost never tie, so without the bands the
+ *    rotation preference below would never engage.
+ * 3. Within a band, whoever did NOT hold duty in this same slot last week
+ *    comes first; then the exact tally; ties beyond that keep staff order
+ *    (sort is stable).
  */
 function byDutyFairness(ctx: Ctx, slot: string) {
 	const ratio = (m: StaffMember) =>
 		(ctx.dutyCount.get(m.id) ?? 0) / Math.max(1, ctx.workCount.get(m.id) ?? 0);
 	const repeatsSlot = (m: StaffMember) => ((ctx.previousDuty[m.id] ?? []).includes(slot) ? 1 : 0);
+	const otherHalfOfDay = `${slot.split(':')[0]}:${slotPeriod(slot) === 'AM' ? 'PM' : 'AM'}`;
+	const dutySameDay = (m: StaffMember) =>
+		cellOf(ctx, m.id, otherHalfOfDay).role === 'duty' ? 1 : 0;
 	return (a: StaffMember, b: StaffMember) => {
+		if (dutySameDay(a) !== dutySameDay(b)) return dutySameDay(a) - dutySameDay(b);
 		const bandA = Math.round(ratio(a) * 50);
 		const bandB = Math.round(ratio(b) * 50);
 		if (bandA !== bandB) return bandA - bandB;

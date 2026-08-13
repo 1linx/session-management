@@ -186,6 +186,35 @@ describe('autoFixWeek', () => {
 		expect(fixed['a']['1:PM'].role).toBeNull();
 	});
 
+	it('avoids giving the same doctor AM and PM duty on one day, even against the tally', () => {
+		// a is well behind on the tally so takes Monday AM; Monday PM then
+		// goes to b rather than doubling a up on the same day.
+		const staff = [gp('a'), gp('b')];
+		const { grid: fixed } = autoFixWeek(
+			staff,
+			grid({
+				a: { '1:AM': 'working:east_calder', '1:PM': 'working:east_calder' },
+				b: { '1:AM': 'working:east_calder', '1:PM': 'working:east_calder' }
+			}),
+			settings(),
+			{ tallies: { a: { worked: 10, duty: 0 }, b: { worked: 10, duty: 3 } } }
+		);
+		expect(fixed['a']['1:AM'].role).toBe('duty');
+		expect(fixed['b']['1:PM'].role).toBe('duty');
+		expect(fixed['a']['1:PM'].role).toBeNull();
+	});
+
+	it('assigns consecutive duty when there is no other candidate', () => {
+		const staff = [gp('a')];
+		const { grid: fixed } = autoFixWeek(
+			staff,
+			grid({ a: { '1:AM': 'working:east_calder', '1:PM': 'working:east_calder' } }),
+			settings()
+		);
+		expect(fixed['a']['1:AM'].role).toBe('duty');
+		expect(fixed['a']['1:PM'].role).toBe('duty');
+	});
+
 	it('avoids repeating last week’s duty slot when tallies are level', () => {
 		const staff = [gp('a'), gp('b')];
 		const { grid: fixed } = autoFixWeek(

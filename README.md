@@ -134,7 +134,9 @@ in `.env` to shrink it for testing). Only **East Calder** sessions count,
 on both sides of the ratio — Ratho duty falls to whoever is on site, often
 a Ratho-only doctor, so it would skew the balance. The lowest tally gets
 duty first, so a GP working 8 EC sessions is expected to carry twice the
-duty of one working 4.
+duty of one working 4. A doctor already on duty in the other half of the
+same day is passed over whenever another candidate exists — no AM+PM duty
+on one day unless unavoidable.
 Tallies within 0.02 count as level, and between level candidates Auto-fix
 avoids giving anyone the same duty slot they held the previous week — a
 preference, never a rule. The admin **Duty** page shows the current tally
