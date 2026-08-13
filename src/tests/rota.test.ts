@@ -20,7 +20,6 @@ type SaveEvent = Parameters<(typeof actions)['save']>[0];
 type LoadResult = {
 	rotaUsers: { id: string; initials: string; standardSlots: Record<string, string> }[];
 	grid: Record<string, Record<string, string>>;
-	prevWeekGrid: Record<string, Record<string, string>> | null;
 	week: string;
 	currentWeek: string;
 	weekIsEmpty: boolean;
@@ -318,60 +317,18 @@ describe('rota save action', () => {
 // manual Save) so it has no server action to test — the save action above
 // covers persisting what it fills in.
 
-// "Copy from previous week" is also client-side; the load supplies the
-// previous week's cells (prevWeekGrid) only when the viewed week is empty.
-describe('prevWeekGrid in the load', () => {
+describe('weekIsEmpty in the load', () => {
 	beforeEach(resetDb);
 
-	it('sends the previous week’s encoded cells for an empty week', async () => {
-		const user = await createUser();
-		await createEntry(user.id, 1, 'AM', { location: 'ratho', role: 'duty' });
-		await createEntry(user.id, 2, 'PM', { status: 'not_working', location: null });
-
-		const data = await runLoad(addWeeks(thisWeek, 1));
-		expect(data.weekIsEmpty).toBe(true);
-		expect(data.prevWeekGrid?.[user.id]).toEqual({
-			'1:AM': 'working:ratho:duty',
-			'2:PM': 'not_working'
-		});
-	});
-
-	it('is null when the previous week has nothing to copy', async () => {
-		await createUser();
-		const data = await runLoad(addWeeks(thisWeek, 5));
-		expect(data.prevWeekGrid).toBeNull();
-	});
-
-	it('is null when the viewed week already has entries', async () => {
+	it('is false once the week has meaningful entries', async () => {
 		const user = await createUser();
 		await createEntry(user.id, 1, 'AM');
-		await createEntry(user.id, 1, 'PM', { weekStart: addWeeks(thisWeek, 1) });
-
-		const data = await runLoad(addWeeks(thisWeek, 1));
-		expect(data.weekIsEmpty).toBe(false);
-		expect(data.prevWeekGrid).toBeNull();
+		expect((await runLoad()).weekIsEmpty).toBe(false);
 	});
 
 	it('treats a fully reset week (all Not working) as empty again', async () => {
 		const user = await createUser();
-		await createEntry(user.id, 1, 'AM'); // previous week has real data
-		await createEntry(user.id, 1, 'AM', {
-			weekStart: addWeeks(thisWeek, 1),
-			status: 'not_working',
-			location: null
-		});
-
-		const data = await runLoad(addWeeks(thisWeek, 1));
-		expect(data.weekIsEmpty).toBe(true);
-		expect(data.prevWeekGrid?.[user.id]?.['1:AM']).toBe('working:east_calder');
-	});
-
-	it('does not offer a fully reset previous week for copying', async () => {
-		const user = await createUser();
 		await createEntry(user.id, 1, 'AM', { status: 'not_working', location: null });
-
-		const data = await runLoad(addWeeks(thisWeek, 1));
-		expect(data.weekIsEmpty).toBe(true);
-		expect(data.prevWeekGrid).toBeNull();
+		expect((await runLoad()).weekIsEmpty).toBe(true);
 	});
 });

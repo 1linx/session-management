@@ -126,7 +126,7 @@
 
 	// Empty-week bootstraps: fill the grid as unsaved edits — nothing is
 	// stored until the admin presses Save.
-	let filledFrom = $state<'defaults' | 'copy' | null>(null);
+	let filledFrom = $state<'defaults' | 'defaults-autofix' | null>(null);
 
 	/** Everyone Working at their usual practice, from standard availability. */
 	function useDefaultValues() {
@@ -137,6 +137,13 @@
 			}
 		}
 		filledFrom = 'defaults';
+	}
+
+	/** Defaults fill, then Auto-fix allocates duty/team/visits on top. */
+	function useDefaultValuesWithAutoFix() {
+		useDefaultValues();
+		runAutoFix();
+		filledFrom = 'defaults-autofix';
 	}
 
 	/** Clear every cell to Not working — as unsaved edits, like everything else. */
@@ -152,18 +159,6 @@
 		// Any pending auto-fix proposal or fill report no longer describes the grid.
 		autofixChanges = null;
 		filledFrom = null;
-	}
-
-	/** Repeat the previous week's saved cells (sent by the load when empty). */
-	function copyFromPreviousWeek() {
-		if (!data.prevWeekGrid) return;
-		for (const user of data.rotaUsers) {
-			for (const slot of ALL_SLOTS) {
-				const key = data.prevWeekGrid[user.id]?.[slot];
-				if (key) cellValues[`${user.id}|${slot}`] = key;
-			}
-		}
-		filledFrom = 'copy';
 	}
 
 	// On entering an empty week, offer the bootstraps in a popup (same style
@@ -319,7 +314,8 @@
 		<span class="inline-block border-2 border-ink bg-accent px-3 py-1 font-bold">
 			{filledFrom === 'defaults'
 				? 'Filled in from standard availability'
-				: 'Copied from the previous week'} as unsaved edits — review, then press Save.
+				: 'Filled in from standard availability and auto-fixed (changes listed below)'} as
+			unsaved edits — review, then press Save.
 		</span>
 	{:else if autofixChanges !== null && autofixChanges.length === 0}
 		<span class="inline-block border-2 border-ink bg-accent px-3 py-1 font-bold">
@@ -504,16 +500,15 @@
 		<p class="mb-2 text-sm font-bold">This week has no rota yet. Start from:</p>
 		<div class="flex flex-wrap gap-3">
 			<button type="button" class="nb-btn" onclick={useDefaultValues}>Use default values</button>
-			{#if data.prevWeekGrid}
-				<button type="button" class="nb-btn nb-btn-secondary" onclick={copyFromPreviousWeek}>
-					Copy from week commencing {weekLabel(prevWeek)}
-				</button>
-			{/if}
+			<button type="button" class="nb-btn nb-btn-secondary" onclick={useDefaultValuesWithAutoFix}>
+				Use default values with auto fix
+			</button>
 		</div>
 		<p class="mt-2 max-w-prose text-sm">
 			Default values mark everyone as Working at their usual practice on the sessions they
-			normally work, from their user settings. Either way the grid fills as unsaved edits for
-			you to review, then Save.
+			normally work, from their user settings; "with auto fix" also allocates duty, duty team
+			and house visits. Either way the grid fills as unsaved edits for you to review, then
+			Save.
 		</p>
 	</div>
 {/if}
@@ -695,21 +690,19 @@
 				Everyone Working at their usual practice, from their user settings.
 			</span>
 		</button>
-		{#if data.prevWeekGrid}
-			<button
-				type="button"
-				class="w-full cursor-pointer border-2 border-ink bg-sky px-3 py-3 text-left font-bold shadow-brutal-sm hover:-translate-x-0.5 hover:-translate-y-0.5"
-				onclick={() => {
-					copyFromPreviousWeek();
-					bootstrapDialog?.close();
-				}}
-			>
-				Copy from previous week
-				<span class="block text-xs font-normal">
-					Repeat week commencing {weekLabel(prevWeek)}, including duty and roles.
-				</span>
-			</button>
-		{/if}
+		<button
+			type="button"
+			class="w-full cursor-pointer border-2 border-ink bg-accent px-3 py-3 text-left font-bold shadow-brutal-sm hover:-translate-x-0.5 hover:-translate-y-0.5"
+			onclick={() => {
+				useDefaultValuesWithAutoFix();
+				bootstrapDialog?.close();
+			}}
+		>
+			Use default values with auto fix
+			<span class="block text-xs font-normal">
+				As above, then Auto-fix allocates duty, duty team and house visits.
+			</span>
+		</button>
 		<p class="text-xs">Nothing is saved until you press Save rota — or close this to start blank.</p>
 	</div>
 </dialog>

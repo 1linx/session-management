@@ -83,32 +83,12 @@ export const load: PageServerLoad = async ({ url }) => {
 	// (popup + buttons) come back. [] is trivially all-not-working.
 	const weekIsEmpty = entries.every((e) => e.status === 'not_working');
 
-	// For an empty week, also send the previous week's cells so the client
-	// can offer "copy from previous week" as unsaved edits (no server write).
-	// null = previous week has nothing worth copying (empty or fully reset).
-	let prevWeekGrid: Record<string, Record<string, string>> | null = null;
-	if (weekIsEmpty) {
-		const prevEntries = await entriesForWeek(
-			addWeeks(week, -1),
-			rotaUsers.map((u) => u.id)
-		);
-		if (prevEntries.some((e) => e.status !== 'not_working')) {
-			prevWeekGrid = {};
-			for (const entry of prevEntries) {
-				(prevWeekGrid[entry.userId] ??= {})[`${entry.weekday}:${entry.period}`] = encodeCell(
-					toCellValue(entry)
-				);
-			}
-		}
-	}
-
 	return {
 		rotaUsers: rotaUsers.map((u) => ({
 			...u,
 			standardSlots: JSON.parse(u.standardSlots) as StandardSlots
 		})),
 		grid,
-		prevWeekGrid,
 		week,
 		currentWeek: currentWeekStart(),
 		weekIsEmpty,
@@ -164,7 +144,7 @@ export const actions: Actions = {
 		return { saved: true };
 	},
 
-	// "Use default values" and "Copy from previous week" are client-side:
-	// they fill the grid as unsaved edits (the load sends the previous
-	// week's cells for the latter), so the admin reviews and Saves manually.
+	// "Use default values" (with or without auto fix) is client-side: it
+	// fills the grid as unsaved edits, so the admin reviews and Saves
+	// manually.
 };

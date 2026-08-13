@@ -71,8 +71,9 @@ scp scripts/seed-data.json foundry:session-management/scripts/
   the current leave year (1 April – 31 March) and sickness as raw totals.
 - **Weeks**: the rota is managed week by week. The grid shows one week
   (identified by its Monday, `?week=YYYY-MM-DD`), defaulting to the current
-  week in UK time, with previous/next navigation. Admins can populate an
-  empty week by copying the week before it.
+  week in UK time, with previous/next navigation. Entering an empty week
+  offers "Use default values" (with or without an Auto-fix pass on top),
+  filling the grid as unsaved edits.
 - **Sessions**: each weekday splits into AM (8am–1pm) and PM (1pm–6pm),
   set via a popout picker on each rota cell. New statuses, locations or
   roles: extend `CellValue`/`CELL_OPTIONS` in [src/lib/constants.ts](src/lib/constants.ts).
