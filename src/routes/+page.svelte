@@ -138,7 +138,10 @@
 	}
 
 	function runAutoFix() {
-		const { changes } = autoFixWeek(staffForRules, currentGrid(), data.ruleSettings);
+		const { changes } = autoFixWeek(staffForRules, currentGrid(), data.ruleSettings, {
+			tallies: data.dutyTallies,
+			previousDuty: data.previousDuty
+		});
 		for (const change of changes) {
 			cellValues[`${change.userId}|${change.slot}`] = encodeCell(change.to);
 		}

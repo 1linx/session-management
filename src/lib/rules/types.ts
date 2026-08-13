@@ -68,3 +68,21 @@ export type Change = {
 	to: CellValue;
 	reason: string;
 };
+
+/**
+ * Historical worked/duty session totals per userId (rolling window), used
+ * to seed the Duty Tally: duty ÷ worked. EAST CALDER sessions only, on
+ * both sides — Ratho duty/work is excluded from the balancing. Users
+ * absent from the map count as 0/0 — a brand-new doctor has the lowest
+ * tally and gets duty first.
+ */
+export type DutyHistory = Record<string, { worked: number; duty: number }>;
+
+/** userId → slot keys ("1:AM") where they held duty the PREVIOUS week. */
+export type PreviousDuty = Record<string, string[]>;
+
+/** Optional balancing context for Auto-fix's duty assignment. */
+export type DutyContext = {
+	tallies?: DutyHistory;
+	previousDuty?: PreviousDuty;
+};

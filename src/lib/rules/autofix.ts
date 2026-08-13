@@ -31,43 +31,59 @@
  *      ALWAYS on house visits in AM sessions (step 1), and trainees on
  *      visits count as half a GP, rounded down.
  *
- * Duty fairness: among candidates, the pick is the GP with the lowest
- * (duty sessions ÷ sessions worked) ratio within this week, so duty spreads
- * proportionately to how much each person works. The count updates as
- * fixes are applied. (The rota period is currently one week; widening the
- * fairness window to a multi-week period is a known future refinement.)
+ * Duty fairness — the running Duty Tally (DT): duty sessions ÷ sessions
+ * worked, counting EAST CALDER sessions only (Ratho duty falls to whoever
+ * is on site, so it would skew the balance; duty-team sessions count the
+ * same as duty — both are the extra commitment being balanced), seeded
+ * from up to a year of saved history (see
+ * $lib/server/duty-history.ts) plus this week's grid, updating live as
+ * fixes are applied. The candidate with the lowest DT gets duty, so duty
+ * spreads proportionately to how much each person works. Tallies within
+ * 0.02 of each other are treated as equal, and within such a band the pick
+ * avoids giving anyone the same duty slot they held the previous week
+ * (doctors dislike repeating slots week after week — a preference, never
+ * a rule: a clearly lower tally still wins).
  *
  * Anything it cannot fix (e.g. no GP available for Ratho duty) is left
  * as-is and will still be flagged red by validation.
  */
 import { ALL_SLOTS, isClinician, slotPeriod, type CellValue, type LocationValue } from '$lib/constants';
-import type { Change, RotaRuleSettings, StaffMember, WeekGrid } from './types';
+import type { Change, DutyContext, RotaRuleSettings, StaffMember, WeekGrid } from './types';
 
 type Ctx = {
 	staff: StaffMember[];
 	grid: WeekGrid;
 	settings: RotaRuleSettings;
 	changes: Change[];
-	/** userId → duty sessions this week (kept current as fixes apply). */
+	/** userId → duty sessions, history + this week (kept current as fixes apply). */
 	dutyCount: Map<string, number>;
-	/** userId → sessions worked this week. */
+	/** userId → sessions worked, history + this week. */
 	workCount: Map<string, number>;
+	/** userId → duty slots held the previous week (rotation preference). */
+	previousDuty: Record<string, string[]>;
 };
 
 function cellOf(ctx: Ctx, userId: string, slot: string): CellValue {
 	return ctx.grid[userId]?.[slot] ?? { status: 'not_working', location: null, role: null };
 }
 
+/**
+ * The Duty Tally counts EAST CALDER sessions only — Ratho duty falls to
+ * whoever is on site, so it would skew the balancing. Duty team is the
+ * same extra commitment as duty, so both accrue tally credit.
+ */
+const ecWorking = (cell: CellValue) => cell.status === 'working' && cell.location === 'east_calder';
+const ecDutyCredit = (cell: CellValue) =>
+	ecWorking(cell) && (cell.role === 'duty' || cell.role === 'duty_team');
+
 function setCell(ctx: Ctx, member: StaffMember, slot: string, to: CellValue, reason: string) {
 	const from = cellOf(ctx, member.id, slot);
 	(ctx.grid[member.id] ??= {})[slot] = to;
 	ctx.changes.push({ userId: member.id, initials: member.initials, slot, from, to, reason });
-	if (from.role === 'duty' && to.role !== 'duty') {
-		ctx.dutyCount.set(member.id, (ctx.dutyCount.get(member.id) ?? 0) - 1);
-	}
-	if (to.role === 'duty' && from.role !== 'duty') {
-		ctx.dutyCount.set(member.id, (ctx.dutyCount.get(member.id) ?? 0) + 1);
-	}
+	const bump = (map: Map<string, number>, by: number) =>
+		map.set(member.id, (map.get(member.id) ?? 0) + by);
+	if (ecWorking(from) !== ecWorking(to)) bump(ctx.workCount, ecWorking(to) ? 1 : -1);
+	if (ecDutyCredit(from) !== ecDutyCredit(to)) bump(ctx.dutyCount, ecDutyCredit(to) ? 1 : -1);
 }
 
 function workingAt(ctx: Ctx, slot: string, practice: LocationValue) {
@@ -94,11 +110,22 @@ const routineMinCount = (ctx: Ctx, slot: string, practice: LocationValue) =>
 		return isClinician(m.category) && (role === null || role === 'duty');
 	}).length;
 
-/** Lowest duty-per-session-worked first; stable on staff order for ties. */
-function byDutyFairness(ctx: Ctx) {
+/**
+ * Lowest Duty Tally (duty ÷ sessions worked) first. Tallies are compared
+ * in bands of 0.02 — exact float ratios almost never tie, so without the
+ * bands the rotation preference below would never engage. Within a band,
+ * whoever did NOT hold duty in this same slot last week comes first; then
+ * the exact tally; ties beyond that keep staff order (sort is stable).
+ */
+function byDutyFairness(ctx: Ctx, slot: string) {
+	const ratio = (m: StaffMember) =>
+		(ctx.dutyCount.get(m.id) ?? 0) / Math.max(1, ctx.workCount.get(m.id) ?? 0);
+	const repeatsSlot = (m: StaffMember) => ((ctx.previousDuty[m.id] ?? []).includes(slot) ? 1 : 0);
 	return (a: StaffMember, b: StaffMember) => {
-		const ratio = (m: StaffMember) =>
-			(ctx.dutyCount.get(m.id) ?? 0) / Math.max(1, ctx.workCount.get(m.id) ?? 0);
+		const bandA = Math.round(ratio(a) * 50);
+		const bandB = Math.round(ratio(b) * 50);
+		if (bandA !== bandB) return bandA - bandB;
+		if (repeatsSlot(a) !== repeatsSlot(b)) return repeatsSlot(a) - repeatsSlot(b);
 		return ratio(a) - ratio(b);
 	};
 }
@@ -138,6 +165,7 @@ function fixSlot(ctx: Ctx, slot: string) {
 			// in a session their standard availability covers at EC means
 			// "not yet rostered", not "off". Absence statuses stay untouched.
 			if (cell.status === 'not_working' && member.standardSlots[slot] === 'east_calder' && !exempt) {
+				// setCell's tally bookkeeping counts them as working at EC.
 				setCell(
 					ctx,
 					member,
@@ -145,7 +173,6 @@ function fixSlot(ctx: Ctx, slot: string) {
 					{ status: 'working', location: 'east_calder', role: 'duty_team' },
 					'available ANP brought in to the East Calder duty team'
 				);
-				ctx.workCount.set(member.id, (ctx.workCount.get(member.id) ?? 0) + 1);
 				continue;
 			}
 		}
@@ -187,7 +214,7 @@ function fixSlot(ctx: Ctx, slot: string) {
 		// 1b. Demote duplicate duty doctors — the lowest-ratio one keeps it.
 		const dutyDocs = workingAt(ctx, slot, practice)
 			.filter((m) => cellOf(ctx, m.id, slot).role === 'duty')
-			.sort(byDutyFairness(ctx));
+			.sort(byDutyFairness(ctx, slot));
 		for (const extra of dutyDocs.slice(1)) {
 			setCell(
 				ctx,
@@ -202,7 +229,7 @@ function fixSlot(ctx: Ctx, slot: string) {
 		if (dutyDocs.length === 0) {
 			const candidates = routine(ctx, slot, practice)
 				.filter((m) => m.category === 'doctor' && !m.dutyExempt[slotPeriod(slot)])
-				.sort(byDutyFairness(ctx));
+				.sort(byDutyFairness(ctx, slot));
 			// Promoting to duty never breaks the routine minimum: a duty GP
 			// still counts towards it.
 			const pick = candidates[0];
@@ -220,7 +247,7 @@ function fixSlot(ctx: Ctx, slot: string) {
 					.filter(
 						(m) => m.category === 'doctor' && m.canWorkRatho && !m.dutyExempt[slotPeriod(slot)]
 					)
-					.sort(byDutyFairness(ctx))
+					.sort(byDutyFairness(ctx, slot))
 					.find(() => {
 						const ecDuty = workingAt(ctx, slot, 'east_calder').some(
 							(m) => cellOf(ctx, m.id, slot).role === 'duty'
@@ -297,11 +324,17 @@ function fixSlot(ctx: Ctx, slot: string) {
 	}
 }
 
-/** Run the fixer over a deep copy of the grid; the input is not mutated. */
+/**
+ * Run the fixer over a deep copy of the grid; the input is not mutated.
+ * `duty` supplies the balancing context: historical worked/duty tallies
+ * (this week's grid is added on top) and last week's duty slots for the
+ * rotation preference. Omitted → fairness within this week only.
+ */
 export function autoFixWeek(
 	staff: StaffMember[],
 	grid: WeekGrid,
-	settings: RotaRuleSettings
+	settings: RotaRuleSettings,
+	duty: DutyContext = {}
 ): { grid: WeekGrid; changes: Change[] } {
 	const copy: WeekGrid = structuredClone(grid);
 	const ctx: Ctx = {
@@ -310,21 +343,23 @@ export function autoFixWeek(
 		settings,
 		changes: [],
 		dutyCount: new Map(),
-		workCount: new Map()
+		workCount: new Map(),
+		previousDuty: duty.previousDuty ?? {}
 	};
 
 	for (const member of staff) {
-		let worked = 0;
-		let duty = 0;
+		const past = duty.tallies?.[member.id];
+		let worked = past?.worked ?? 0;
+		let dutyHeld = past?.duty ?? 0;
 		for (const slot of ALL_SLOTS) {
 			const cell = copy[member.id]?.[slot];
-			if (cell?.status === 'working') {
+			if (cell && ecWorking(cell)) {
 				worked += 1;
-				if (cell.role === 'duty') duty += 1;
+				if (ecDutyCredit(cell)) dutyHeld += 1;
 			}
 		}
 		ctx.workCount.set(member.id, worked);
-		ctx.dutyCount.set(member.id, duty);
+		ctx.dutyCount.set(member.id, dutyHeld);
 	}
 
 	for (const slot of ALL_SLOTS) fixSlot(ctx, slot);

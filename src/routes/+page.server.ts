@@ -15,6 +15,7 @@ import {
 import { addWeeks, currentWeekStart, isISODate, mondayOf, resolveWeek } from '$lib/dates';
 import { broadcastChange } from '$lib/server/realtime';
 import { getRuleSettings } from '$lib/server/settings';
+import { getDutyTallies, getPreviousDuty } from '$lib/server/duty-history';
 import type { Actions, PageServerLoad } from './$types';
 
 async function loadRotaUsers() {
@@ -86,7 +87,11 @@ export const load: PageServerLoad = async ({ url }) => {
 		week,
 		currentWeek: currentWeekStart(),
 		weekIsEmpty: entries.length === 0,
-		ruleSettings: await getRuleSettings()
+		ruleSettings: await getRuleSettings(),
+		// Duty-balancing context for Auto-fix: historical tallies (this week
+		// excluded — the live grid supplies it) + last week's duty slots.
+		dutyTallies: await getDutyTallies(week),
+		previousDuty: await getPreviousDuty(week)
 	};
 };
 

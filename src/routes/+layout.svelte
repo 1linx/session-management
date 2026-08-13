@@ -30,6 +30,7 @@
 			? [
 					{ href: '/', label: 'Rota' },
 					{ href: '/absences', label: 'Absences' },
+					{ href: '/duty', label: 'Duty' },
 					{ href: '/users', label: 'Users' },
 					{ href: '/settings', label: 'Staffing rules' },
 					{ href: '/raw', label: 'Raw data' }

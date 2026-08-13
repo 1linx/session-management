@@ -114,8 +114,7 @@ including unsaved edits — and applies its corrections as **unsaved edits**
 for review; nothing persists until the admin presses Save. It puts every
 East Calder ANP on the duty team — including bringing in an ANP left "Not
 working" in a session their standard availability covers at EC — strips
-invalid roles, promotes routine GPs to duty (choosing the lowest
-duty-per-sessions-worked ratio so duty spreads proportionately), relocates
+invalid roles, promotes routine GPs to duty (see duty balancing below), relocates
 a `canWorkRatho` GP when Ratho lacks one (only if EC still meets its own
 rules), tops the duty team up with GPs, then fills house visits — never
 touching absences (sick, leave, activities), never bringing anyone but an
@@ -123,9 +122,27 @@ available ANP in from "Not working", and never dropping anyone below the
 routine minimum. Every change is listed in the UI; what can't be fixed stays red,
 and navigating away discards the proposal like any other unsaved edit.
 
+### Duty balancing
+
+Duty is an extra commitment, so Auto-fix spreads it using a running
+**Duty Tally**: duty sessions ÷ sessions worked (a duty-team session
+counts the same as duty), per GP, over a rolling
+window of saved rota history (365 days by default; set `DUTY_HISTORY_DAYS`
+in `.env` to shrink it for testing). Only **East Calder** sessions count,
+on both sides of the ratio — Ratho duty falls to whoever is on site, often
+a Ratho-only doctor, so it would skew the balance. The lowest tally gets
+duty first, so a GP working 8 EC sessions is expected to carry twice the
+duty of one working 4.
+Tallies within 0.02 count as level, and between level candidates Auto-fix
+avoids giving anyone the same duty slot they held the previous week — a
+preference, never a rule. The admin **Duty** page shows the current tally
+per GP and a week-by-week log of who held duty in every session, as the
+audit trail for fairness questions. The window is enforced at query time;
+no rota history is deleted (it also feeds the absence summaries, and a year
+of data is only ~13k small rows).
+
 Planned next (from the brief, not yet implemented): a cross-site
-auto-allocation history ("sub-rota") recording who was moved or given
-extra duty.
+auto-allocation history ("sub-rota") recording who was moved.
 
 ## Pages
 
@@ -133,6 +150,7 @@ extra duty.
 | --- | --- | --- |
 | `/` | all users | The weekly rota grid (editable for admins), rule warnings, Auto-fix |
 | `/absences` | all users | Annual leave vs entitlement + sickness totals |
+| `/duty` | admin | Duty tally per GP + week-by-week duty log |
 | `/users` | admin | Add/edit users, standard sessions, order, roles |
 | `/settings` | admin | Staffing-rule requirements (minimums, duty team, house visits) |
 | `/export?week=` | all users | Download one week's rota as `rota-YYYY-MM-DD.xlsx` |

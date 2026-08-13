@@ -150,6 +150,73 @@ describe('autoFixWeek', () => {
 		expect(fixed['b']['1:PM'].location).toBe('east_calder');
 	});
 
+	it('gives duty to the GP with the lowest historical duty tally', () => {
+		// Without history, a (first in staff order) would be picked.
+		const staff = [gp('a'), gp('b')];
+		const { grid: fixed } = autoFixWeek(
+			staff,
+			grid({
+				a: { '1:AM': 'working:east_calder' },
+				b: { '1:AM': 'working:east_calder' }
+			}),
+			settings(),
+			{ tallies: { a: { worked: 8, duty: 2 }, b: { worked: 8, duty: 0 } } }
+		);
+		expect(fixed['b']['1:AM'].role).toBe('duty');
+		expect(fixed['a']['1:AM'].role).toBeNull();
+	});
+
+	it('duty-team sessions this week count towards the tally like duty', () => {
+		// a is on the duty team twice, so despite equal history b (no duty
+		// commitments) is further behind and takes Monday PM duty.
+		const staff = [gp('a'), gp('b')];
+		const { grid: fixed } = autoFixWeek(
+			staff,
+			grid({
+				a: {
+					'1:AM': 'working:east_calder:duty_team',
+					'2:AM': 'working:east_calder:duty_team',
+					'1:PM': 'working:east_calder'
+				},
+				b: { '1:PM': 'working:east_calder' }
+			}),
+			settings()
+		);
+		expect(fixed['b']['1:PM'].role).toBe('duty');
+		expect(fixed['a']['1:PM'].role).toBeNull();
+	});
+
+	it('avoids repeating last week’s duty slot when tallies are level', () => {
+		const staff = [gp('a'), gp('b')];
+		const { grid: fixed } = autoFixWeek(
+			staff,
+			grid({
+				a: { '1:AM': 'working:east_calder' },
+				b: { '1:AM': 'working:east_calder' }
+			}),
+			settings(),
+			{ previousDuty: { a: ['1:AM'] } } // a held Monday AM duty last week
+		);
+		expect(fixed['b']['1:AM'].role).toBe('duty');
+	});
+
+	it('a clearly lower tally beats the rotation preference', () => {
+		const staff = [gp('a'), gp('b')];
+		const { grid: fixed } = autoFixWeek(
+			staff,
+			grid({
+				a: { '1:AM': 'working:east_calder' },
+				b: { '1:AM': 'working:east_calder' }
+			}),
+			settings(),
+			{
+				tallies: { a: { worked: 10, duty: 0 }, b: { worked: 10, duty: 5 } },
+				previousDuty: { a: ['1:AM'] } // a repeats the slot, but is far behind on duty
+			}
+		);
+		expect(fixed['a']['1:AM'].role).toBe('duty');
+	});
+
 	it('demotes duplicate duty doctors down to one', () => {
 		const staff = [gp('a'), gp('b')];
 		const { grid: fixed } = autoFixWeek(
