@@ -139,6 +139,21 @@
 		filledFrom = 'defaults';
 	}
 
+	/** Clear every cell to Not working — as unsaved edits, like everything else. */
+	function resetWeek() {
+		if (!confirm('Clear every session this week? Nothing is stored until you press Save rota.')) {
+			return;
+		}
+		for (const user of data.rotaUsers) {
+			for (const slot of ALL_SLOTS) {
+				cellValues[`${user.id}|${slot}`] = 'not_working';
+			}
+		}
+		// Any pending auto-fix proposal or fill report no longer describes the grid.
+		autofixChanges = null;
+		filledFrom = null;
+	}
+
 	/** Repeat the previous week's saved cells (sent by the load when empty). */
 	function copyFromPreviousWeek() {
 		if (!data.prevWeekGrid) return;
@@ -444,6 +459,9 @@
 				disabled={saving || !dirty}
 			>
 				{saving ? 'Saving…' : 'Save rota'}
+			</button>
+			<button type="button" class="nb-btn nb-btn-secondary" onclick={resetWeek}>
+				Reset week
 			</button>
 			{#if !dirty && !saving}
 				<span class="text-sm text-neutral-700">No unsaved changes</span>
