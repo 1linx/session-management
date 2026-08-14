@@ -107,7 +107,8 @@ Rules implemented (configurable on the Staffing rules page unless noted):
 2. Minimum GPs/trainees on routine clinics, per practice. The duty doctor
    counts towards it (duty is worked alongside routine patients); duty
    team and house visits don't.
-3. EC duty team minimum (error) and desirable (warning) per session.
+3. EC duty team minimum (error) and desirable (warning) per session; the
+   EC duty doctor counts towards both.
    ANPs working at EC are always on the duty team (Auto-fix marks them;
    validation warns when one isn't); GPs top the team up to the minimum,
    lowest Duty Tally first (never trainees).

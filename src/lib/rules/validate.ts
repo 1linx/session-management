@@ -10,11 +10,12 @@
  *      towards this minimum (they still see routine patients); duty team
  *      and house-visit allocations do not.
  *  R3  East Calder duty team must meet the configured minimum per session
- *      (error) and ideally the desirable number (warning). ANPs working at
- *      East Calder are always on the duty team — one that isn't marked as
- *      such is flagged (warning; Auto-fix corrects it). The per-user AM/PM
- *      duty exemption covers the duty team too: an exempt member on it is
- *      an error, and exempt ANPs aren't expected to join.
+ *      (error) and ideally the desirable number (warning). The EC duty
+ *      doctor counts towards both. ANPs working at East Calder are always
+ *      on the duty team — one that isn't marked as such is flagged
+ *      (warning; Auto-fix corrects it). The per-user AM/PM duty exemption
+ *      covers the duty team too: an exempt member on it is an error, and
+ *      exempt ANPs aren't expected to join.
  *  R4  East Calder house visits must meet the configured allocation per
  *      session, and only GPs/trainees may be allocated. Trainees count as
  *      half a GP (rounded down: 2 trainees = 1 GP, 3 trainees still = 1),
@@ -124,20 +125,22 @@ export function validateWeek(
 			}
 		}
 
-		// R3 — East Calder duty team.
+		// R3 — East Calder duty team. The EC duty doctor counts towards the
+		// minimum/desirable numbers: duty is duty-team work.
 		const ec = working(views, 'east_calder');
 		const team = ec.filter((v) => v.cell.role === 'duty_team');
+		const teamCount = team.length + ec.filter((v) => v.cell.role === 'duty').length;
 		const teamMin = settings.dutyTeamMin[slot] ?? 0;
 		const teamDesired = settings.dutyTeamDesired[slot] ?? 0;
-		if (team.length < teamMin) {
+		if (teamCount < teamMin) {
 			found.push({
 				severity: 'error',
-				message: `East Calder: duty team has ${team.length} of ${teamMin} required`
+				message: `East Calder: duty team has ${teamCount} of ${teamMin} required (incl. duty doctor)`
 			});
-		} else if (team.length < teamDesired) {
+		} else if (teamCount < teamDesired) {
 			found.push({
 				severity: 'warning',
-				message: `East Calder: duty team has ${team.length}, below the desirable ${teamDesired}`
+				message: `East Calder: duty team has ${teamCount}, below the desirable ${teamDesired}`
 			});
 		}
 		const exemptTeam = team.filter((v) => v.member.dutyExempt[slotPeriod(slot)]);

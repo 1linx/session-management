@@ -367,7 +367,7 @@ describe('autoFixWeek', () => {
 
 	it('counts a brought-in ANP towards the minimum ahead of GPs', () => {
 		const s = settings();
-		s.dutyTeamMin['1:AM'] = 2;
+		s.dutyTeamMin['1:AM'] = 3;
 		const staff = [gp('a'), gp('b'), gp('c'), anp('n', { '1:AM': 'east_calder' })];
 		const { grid: fixed } = autoFixWeek(
 			staff,
@@ -411,7 +411,7 @@ describe('autoFixWeek', () => {
 
 	it('does not top up the duty team with a GP excluded that period', () => {
 		const s = settings();
-		s.dutyTeamMin['1:AM'] = 1;
+		s.dutyTeamMin['1:AM'] = 2;
 		const staff = [gp('a'), gp('b', false, { AM: true, PM: false })];
 		const { grid: fixed } = autoFixWeek(
 			staff,
@@ -429,7 +429,7 @@ describe('autoFixWeek', () => {
 
 	it('tops the duty team up with the lowest-tally GP, not staff order', () => {
 		const s = settings();
-		s.dutyTeamMin['1:AM'] = 1;
+		s.dutyTeamMin['1:AM'] = 2;
 		// d already holds duty; a is first in staff order but far ahead on
 		// the tally, so the team place goes to b.
 		const staff = [gp('a'), gp('b'), gp('d')];
@@ -449,7 +449,7 @@ describe('autoFixWeek', () => {
 
 	it('never puts a trainee on the duty team', () => {
 		const s = settings();
-		s.dutyTeamMin['1:PM'] = 1;
+		s.dutyTeamMin['1:PM'] = 2;
 		const staff = [gp('a'), trainee('t')];
 		const { grid: fixed } = autoFixWeek(
 			staff,
@@ -465,7 +465,7 @@ describe('autoFixWeek', () => {
 
 	it('tops the duty team up with GPs once the ANPs are on it', () => {
 		const s = settings();
-		s.dutyTeamMin['1:AM'] = 2;
+		s.dutyTeamMin['1:AM'] = 3;
 		const staff = [gp('a'), gp('b'), anp('n')];
 		const { grid: fixed } = autoFixWeek(
 			staff,

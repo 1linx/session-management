@@ -78,9 +78,9 @@
 			East Calder duty team
 		</legend>
 		<p class="mb-4 text-sm">
-			Staff required on the duty team per session. Minimum shades the row red when missed;
-			desirable is a softer target. ANPs working at East Calder are always on the duty team;
-			GPs top it up to the minimum.
+			Staff required on the duty team per session, counting the East Calder duty doctor.
+			Minimum shades the row red when missed; desirable is a softer target. ANPs working at
+			East Calder are always on the duty team; GPs top it up to the minimum.
 		</p>
 		<div class="nb-scroll">
 			<table class="nb-table">

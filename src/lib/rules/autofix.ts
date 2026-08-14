@@ -23,10 +23,11 @@
  *      Ratho has none, a routine East Calder GP with canWorkRatho (same
  *      exclusion applies) is relocated — but only if East Calder still
  *      meets its own duty + routine minimum afterwards.
- *   3. Top the East Calder duty team up to its minimum with routine GPs
- *      (never trainees; every EC ANP is already on it after step 1),
- *      lowest Duty Tally first — team sessions count as duty — and never
- *      dropping routine clinicians below the configured minimum.
+ *   3. Top the East Calder duty team up to its minimum — the EC duty
+ *      doctor counts towards it — with routine GPs (never trainees; every
+ *      EC ANP is already on it after step 1), lowest Duty Tally first
+ *      (team sessions count as duty), never dropping routine clinicians
+ *      below the configured minimum.
  *   4. Fill East Calder house visits: routine GPs/trainees only, same
  *      minimum-preserving constraint. GP trainees working at EC are
  *      ALWAYS on house visits in AM sessions (step 1), and trainees on
@@ -281,11 +282,15 @@ function fixSlot(ctx: Ctx, slot: string) {
 		}
 	}
 
-	// 3. East Calder duty team up to the minimum. Every EC ANP is already on
-	// the team (step 1), so only routine GPs/trainees remain as top-ups.
+	// 3. East Calder duty team up to the minimum. The EC duty doctor counts
+	// towards it (duty is duty-team work), and every EC ANP is already on
+	// the team (step 1), so only routine GPs remain as top-ups.
 	const teamMin = ctx.settings.dutyTeamMin[slot] ?? 0;
 	const team = () =>
-		workingAt(ctx, slot, 'east_calder').filter((m) => cellOf(ctx, m.id, slot).role === 'duty_team');
+		workingAt(ctx, slot, 'east_calder').filter((m) => {
+			const role = cellOf(ctx, m.id, slot).role;
+			return role === 'duty_team' || role === 'duty';
+		});
 	while (team().length < teamMin) {
 		// GPs only (trainees never join the team), lowest Duty Tally first —
 		// team sessions count as duty, so the top-up must spread by the same

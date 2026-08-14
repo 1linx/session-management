@@ -187,12 +187,13 @@ describe('R2 — minimum routine clinicians', () => {
 });
 
 describe('R3 — East Calder duty team', () => {
-	it('errors below minimum, warns below desirable', () => {
+	it('errors below minimum, warns below desirable — duty doctor counts', () => {
 		const s = settings();
-		s.dutyTeamMin['1:AM'] = 1;
-		s.dutyTeamDesired['1:AM'] = 2;
+		s.dutyTeamMin['1:AM'] = 2;
+		s.dutyTeamDesired['1:AM'] = 3;
 		const staff = [gp('a'), anp('n1'), anp('n2')];
 
+		// Duty doctor a counts as 1; the routine ANP doesn't → 1 of 2.
 		const below = validateWeek(
 			staff,
 			grid({
@@ -201,10 +202,13 @@ describe('R3 — East Calder duty team', () => {
 			}),
 			s
 		);
-		expect(below['1:AM'].some((p) => p.severity === 'error' && p.message.includes('duty team'))).toBe(
-			true
-		);
+		expect(
+			below['1:AM'].some(
+				(p) => p.severity === 'error' && p.message.includes('duty team has 1 of 2')
+			)
+		).toBe(true);
 
+		// Duty doctor + one marked ANP = 2 → minimum met, desirable (3) not.
 		const atMin = validateWeek(
 			staff,
 			grid({
