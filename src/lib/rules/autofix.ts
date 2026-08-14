@@ -30,8 +30,8 @@
  *      below the configured minimum.
  *   4. Fill East Calder house visits: routine GPs/trainees only, same
  *      minimum-preserving constraint. GP trainees working at EC are
- *      ALWAYS on house visits in AM sessions (step 1), and trainees on
- *      visits count as half a GP, rounded down.
+ *      ALWAYS on house visits in AM sessions (step 1), and a trainee on
+ *      visits counts as exactly 0.5 of a GP (requirements may be halves).
  *
  * Duty fairness — the running Duty Tally (DT): duty sessions ÷ sessions
  * worked, counting EAST CALDER sessions only (Ratho duty falls to whoever
@@ -311,8 +311,8 @@ function fixSlot(ctx: Ctx, slot: string) {
 		);
 	}
 
-	// 4. East Calder house visits — GPs/trainees only. Trainees count as
-	// half a GP, rounded down (2 trainees = 1 GP, 3 trainees still = 1).
+	// 4. East Calder house visits — GPs/trainees only. A trainee counts as
+	// exactly 0.5 of a GP; the requirement itself may be set in halves.
 	const visitsRequired = ctx.settings.houseVisitsRequired[slot] ?? 0;
 	const visits = () =>
 		workingAt(ctx, slot, 'east_calder').filter(
@@ -321,18 +321,16 @@ function fixSlot(ctx: Ctx, slot: string) {
 	const visitsCount = () => {
 		const onVisits = visits();
 		const trainees = onVisits.filter((m) => m.category === 'gp_trainee').length;
-		return onVisits.filter((m) => m.category === 'doctor').length + Math.floor(trainees / 2);
+		return onVisits.filter((m) => m.category === 'doctor').length + trainees * 0.5;
 	};
 	while (visitsCount() < visitsRequired) {
 		const candidates = routineClinicians(ctx, slot, 'east_calder');
-		// GPs first (full credit); a trainee only if they complete a pair —
-		// a lone odd trainee would leave routine clinics for no gain.
-		const traineesOnVisits = visits().filter((m) => m.category === 'gp_trainee').length;
-		const routineTrainees = candidates.filter((m) => m.category === 'gp_trainee');
-		const traineeHelps = traineesOnVisits % 2 === 1 || routineTrainees.length >= 2;
-		const pick =
-			candidates.find((m) => m.category === 'doctor') ??
-			(traineeHelps ? routineTrainees[0] : undefined);
+		const gpPick = candidates.find((m) => m.category === 'doctor');
+		const traineePick = candidates.find((m) => m.category === 'gp_trainee');
+		// A trainee is the exact fit for a half-step shortfall; otherwise
+		// GPs go first (full credit), trainees fill in when no GP is spare.
+		const shortfall = visitsRequired - visitsCount();
+		const pick = shortfall <= 0.5 ? (traineePick ?? gpPick) : (gpPick ?? traineePick);
 		if (!pick) break;
 		if (routineMinCount(ctx, slot, 'east_calder') - 1 < ctx.settings.minRoutineClinicians.east_calder) break;
 		setCell(

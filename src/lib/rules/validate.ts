@@ -17,10 +17,10 @@
  *      covers the duty team too: an exempt member on it is an error, and
  *      exempt ANPs aren't expected to join.
  *  R4  East Calder house visits must meet the configured allocation per
- *      session, and only GPs/trainees may be allocated. Trainees count as
- *      half a GP (rounded down: 2 trainees = 1 GP, 3 trainees still = 1),
- *      and trainees working at EC always do house visits in AM sessions
- *      (warning when not marked; Auto-fix corrects it).
+ *      session (settable in halves), and only GPs/trainees may be
+ *      allocated. A trainee counts as exactly 0.5 of a GP, and trainees
+ *      working at EC always do house visits in AM sessions (warning when
+ *      not marked; Auto-fix corrects it).
  *  R5  Duty team and house visits are East Calder concepts — flagged at
  *      Ratho.
  *
@@ -163,18 +163,18 @@ export function validateWeek(
 			});
 		}
 
-		// R4 — East Calder house visits. Trainees count as half a GP, rounded
-		// down: 2 trainees = 1 GP, but 3 trainees still = 1.
+		// R4 — East Calder house visits. A trainee counts as exactly 0.5 of a
+		// GP, and the requirement itself may be set in halves.
 		const visits = ec.filter((v) => v.cell.role === 'house_visits');
 		const visitTrainees = visits.filter((v) => v.member.category === 'gp_trainee').length;
 		const visitsCount =
-			visits.filter((v) => v.member.category === 'doctor').length + Math.floor(visitTrainees / 2);
+			visits.filter((v) => v.member.category === 'doctor').length + visitTrainees * 0.5;
 		const visitsRequired = settings.houseVisitsRequired[slot] ?? 0;
 		if (visitsCount < visitsRequired) {
 			found.push({
 				severity: 'error',
 				message: `East Calder: ${visitsCount} of ${visitsRequired} required house-visit allocations${
-					visitTrainees > 0 ? ' (2 trainees count as 1 GP)' : ''
+					visitTrainees > 0 ? ' (trainees count as 0.5)' : ''
 				}`
 			});
 		}

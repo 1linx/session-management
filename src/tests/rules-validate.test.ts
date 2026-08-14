@@ -304,7 +304,7 @@ describe('R4/R5 — house visits and misplaced roles', () => {
 		).toBe(true);
 	});
 
-	it('counts 2 trainees on visits as 1 GP, rounded down', () => {
+	it('counts a trainee on visits as exactly 0.5 of a GP', () => {
 		const s = settings();
 		s.houseVisitsRequired['2:PM'] = 2;
 		const staff = [gp('a'), gp('b'), trainee('t1'), trainee('t2'), trainee('t3')];
@@ -323,7 +323,7 @@ describe('R4/R5 — house visits and misplaced roles', () => {
 			(satisfied['2:PM'] ?? []).some((p) => p.message.includes('house-visit'))
 		).toBe(false);
 
-		// 3 trainees still only = 1 → shortfall of 1.
+		// 3 trainees = 1.5 → shortfall of 0.5.
 		const short = validateWeek(
 			staff,
 			grid({
@@ -336,9 +336,24 @@ describe('R4/R5 — house visits and misplaced roles', () => {
 		);
 		expect(
 			short['2:PM'].some((p) =>
-				p.message.includes('1 of 2 required house-visit allocations (2 trainees count as 1 GP)')
+				p.message.includes('1.5 of 2 required house-visit allocations (trainees count as 0.5)')
 			)
 		).toBe(true);
+	});
+
+	it('accepts a half-step requirement met by a GP + trainee', () => {
+		const s = settings();
+		s.houseVisitsRequired['2:PM'] = 1.5;
+		const problems = validateWeek(
+			[gp('a'), gp('b'), trainee('t1')],
+			grid({
+				a: { '2:PM': 'working:east_calder:duty' },
+				b: { '2:PM': 'working:east_calder:house_visits' },
+				t1: { '2:PM': 'working:east_calder:house_visits' }
+			}),
+			s
+		);
+		expect((problems['2:PM'] ?? []).some((p) => p.message.includes('house-visit'))).toBe(false);
 	});
 
 	it('expects EC trainees on house visits in AM sessions only', () => {

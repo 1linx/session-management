@@ -9,10 +9,12 @@ export const load: PageServerLoad = async () => {
 	return { ruleSettings: await getRuleSettings() };
 };
 
-function readCount(data: FormData, name: string): number | null {
+/** Parse a count field; `step` 0.5 allows halves (trainees count as 0.5). */
+function readCount(data: FormData, name: string, step = 1): number | null {
 	const raw = String(data.get(name) ?? '0').trim();
 	const value = Number(raw === '' ? 0 : raw);
-	if (!Number.isInteger(value) || value < 0 || value > 50) return null;
+	if (!Number.isFinite(value) || value < 0 || value > 50) return null;
+	if (!Number.isInteger(value / step)) return null;
 	return value;
 }
 
@@ -37,9 +39,12 @@ export const actions: Actions = {
 		for (const slot of ALL_SLOTS) {
 			const min = readCount(data, `dutyTeamMin:${slot}`);
 			const desired = readCount(data, `dutyTeamDesired:${slot}`);
-			const visits = readCount(data, `houseVisits:${slot}`);
+			const visits = readCount(data, `houseVisits:${slot}`, 0.5);
 			if (min === null || desired === null || visits === null) {
-				return fail(400, { message: 'Counts must be whole numbers between 0 and 50.' });
+				return fail(400, {
+					message:
+						'Counts must be between 0 and 50 — whole numbers, except house visits which allow halves (trainees count as 0.5).'
+				});
 			}
 			if (min > 0) next.dutyTeamMin[slot] = min;
 			if (desired > 0) next.dutyTeamDesired[slot] = desired;

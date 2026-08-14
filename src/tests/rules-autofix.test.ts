@@ -515,7 +515,7 @@ describe('autoFixWeek', () => {
 		expect(fixed['t2']['1:PM'].role).toBe('house_visits');
 	});
 
-	it('does not waste a lone trainee on visits when they cannot complete a pair', () => {
+	it('a lone trainee contributes 0.5 towards visits', () => {
 		const s = settings();
 		s.houseVisitsRequired['1:PM'] = 1;
 		const staff = [gp('a'), trainee('t1')];
@@ -527,9 +527,30 @@ describe('autoFixWeek', () => {
 			}),
 			s
 		);
-		// a takes duty; a single trainee counts for 0 visits, so they stay
-		// on routine clinics rather than being burned for no credit.
-		expect(fixed['t1']['1:PM'].role).toBeNull();
+		// a takes duty; the trainee covers 0.5 of the 1 required (validation
+		// still flags the remaining half, but every half helps).
+		expect(fixed['t1']['1:PM'].role).toBe('house_visits');
+	});
+
+	it('uses a trainee as the exact fit for a half-step shortfall', () => {
+		const s = settings();
+		s.houseVisitsRequired['1:PM'] = 1.5;
+		const staff = [gp('a'), gp('b'), gp('c'), trainee('t1')];
+		const { grid: fixed } = autoFixWeek(
+			staff,
+			grid({
+				a: { '1:PM': 'working:east_calder' },
+				b: { '1:PM': 'working:east_calder' },
+				c: { '1:PM': 'working:east_calder' },
+				t1: { '1:PM': 'working:east_calder' }
+			}),
+			s
+		);
+		// a takes duty; one GP covers 1; the remaining 0.5 goes to the
+		// trainee rather than burning another GP.
+		const gpVisits = ['b', 'c'].filter((u) => fixed[u]['1:PM'].role === 'house_visits');
+		expect(gpVisits).toHaveLength(1);
+		expect(fixed['t1']['1:PM'].role).toBe('house_visits');
 	});
 
 	it('respects the routine minimum when allocating house visits', () => {

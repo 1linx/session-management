@@ -125,7 +125,8 @@
 		</legend>
 		<p class="mb-4 text-sm">
 			GP/trainee allocations required for house visits (12–1pm and 2–3pm) per session.
-			Trainees count as half a GP, rounded down: 2 trainees = 1 GP, but 3 still = 1.
+			A trainee counts as exactly 0.5 of a GP, so requirements can be set in halves
+			(e.g. 1.5).
 		</p>
 		<div class="nb-scroll">
 			<table class="nb-table">
@@ -148,6 +149,7 @@
 										type="number"
 										min="0"
 										max="50"
+										step="0.5"
 										name={`houseVisits:${slot}`}
 										value={data.ruleSettings.houseVisitsRequired[slot] ?? 0}
 										aria-label={`House visits required, ${day.label} ${period.label}`}
