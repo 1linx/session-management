@@ -607,6 +607,18 @@
 									class="block h-full w-full cursor-pointer px-3 py-2 text-left"
 									aria-label={`${row.label}${rowIsPublicHoliday(row.slot) ? ' (public holiday)' : ''}${selectedSession === row.slot ? ' (selected)' : ''}. Select session`}
 									onclick={() => selectSession(row)}
+									ondblclick={() => {
+										selectSession(row);
+										sessionDialog?.showModal();
+									}}
+									onkeydown={(e) => {
+										// Enter opens the session picker directly, like Enter on a cell.
+										if (e.key === 'Enter' && !e.metaKey && !e.ctrlKey && !e.shiftKey) {
+											e.preventDefault();
+											selectSession(row);
+											sessionDialog?.showModal();
+										}
+									}}
 								>
 									{@render rowHeading()}
 								</button>
