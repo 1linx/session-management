@@ -557,8 +557,8 @@
 		<table class="w-full border-separate border-spacing-0 text-sm">
 			<caption class="border-b-2 border-ink bg-paper px-3 py-2 text-left font-bold">
 				Sessions for all staff. AM is 8am–1pm, PM is 1pm–6pm. Greyed cells are outside that
-				person's standard sessions but can still be set. Rows outlined in red break a staffing
-				rule — details under the table.
+				person's standard sessions but can still be set. A red session header with ⚠ means
+				the session breaks a staffing rule — details under the table.
 			</caption>
 			<thead>
 				<tr>
@@ -579,7 +579,7 @@
 			<tbody>
 				{#each rows as row, rowIdx (row.label)}
 					{@const hasErrors = slotHasErrors(problems, row.slot)}
-					<tr class={hasErrors ? 'rule-fail' : ''}>
+					<tr>
 						<th
 							scope="row"
 							class="sticky left-0 z-10 border-r-2 border-b-2 border-ink p-0 text-left whitespace-nowrap {selectedSession ===

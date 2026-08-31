@@ -101,7 +101,8 @@ scp scripts/seed-data.json foundry:session-management/scripts/
 All allocation logic lives in [src/lib/rules/](src/lib/rules/) — deliberately
 pure (no database, no framework) because it will need the most fine-tuning.
 The rota page runs `validateWeek()` live in the browser as cells are edited;
-rows breaking a rule are outlined red with the reasons listed under the grid.
+sessions breaking a rule get a red header with a warning icon, and the
+reasons are listed under the grid.
 
 Rules implemented (configurable on the Staffing rules page unless noted):
 
