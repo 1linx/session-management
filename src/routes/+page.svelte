@@ -165,6 +165,50 @@
 		filledFrom = null;
 	}
 
+	// --- Session-level statuses (via the row header; Public holiday only
+	// for now). Clicking a header selects the session; "Set value…" in the
+	// selection bar opens the session picker, and choices apply to every
+	// user on the row — as unsaved edits, after a confirm.
+	function rowIsPublicHoliday(slot: string): boolean {
+		return data.rotaUsers.every(
+			(u) => (cellValues[`${u.id}|${slot}`] ?? 'not_working') === 'public_holiday'
+		);
+	}
+
+	const sessionRow = $derived(rows.find((r) => r.slot === selectedSession) ?? null);
+	let sessionDialog = $state<HTMLDialogElement | null>(null);
+
+	function selectSession(row: (typeof rows)[number]) {
+		selected.clear();
+		selectionAnchor = null;
+		selectedSession = row.slot;
+		announce = `Selected the ${row.label} session`;
+	}
+
+	function setSessionHoliday(row: (typeof rows)[number]) {
+		sessionDialog?.close();
+		if (
+			!confirm(
+				`Do you want to set ${row.label} to a Public holiday? Every user on this row will be marked Public holiday.`
+			)
+		) {
+			return;
+		}
+		for (const user of data.rotaUsers) cellValues[`${user.id}|${row.slot}`] = 'public_holiday';
+		announce = `${row.label} set to a public holiday`;
+		selectedSession = null;
+	}
+
+	function clearSessionHoliday(row: (typeof rows)[number]) {
+		sessionDialog?.close();
+		if (!confirm(`Clear the Public holiday on ${row.label}? Everyone returns to Not working.`)) {
+			return;
+		}
+		for (const user of data.rotaUsers) cellValues[`${user.id}|${row.slot}`] = 'not_working';
+		announce = `${row.label} public holiday cleared`;
+		selectedSession = null;
+	}
+
 	// On entering an empty week, offer the bootstraps in a popup (same style
 	// as the cell picker). Dismissing it leaves a blank grid; the inline
 	// buttons under the table remain as a fallback. The offered flag stops
@@ -203,6 +247,8 @@
 	// Everything applies as unsaved edits.
 	const selected = new SvelteSet<string>();
 	let selectionAnchor: { row: number; col: number } | null = null;
+	/** Slot key of the selected session row header (exclusive with cells). */
+	let selectedSession = $state<string | null>(null);
 	let copied = $state<string | null>(null);
 	/** Screen-reader announcements for selection/copy/paste actions. */
 	let announce = $state('');
@@ -212,6 +258,7 @@
 	function clearSelection() {
 		selected.clear();
 		selectionAnchor = null;
+		selectedSession = null;
 	}
 
 	function handleCellClick(
@@ -221,6 +268,7 @@
 		rowIdx: number,
 		colIdx: number
 	) {
+		selectedSession = null; // cell and session selections are exclusive
 		const cellId = `${user.id}|${row.slot}`;
 		if (event.metaKey || event.ctrlKey) {
 			if (selected.has(cellId)) selected.delete(cellId);
@@ -364,6 +412,8 @@
 				return 'bg-coral';
 			case 'annual_leave':
 				return 'bg-lilac';
+			case 'public_holiday':
+				return 'bg-steel';
 			case 'not_working':
 				return 'bg-white';
 			default:
@@ -424,7 +474,13 @@
 
 <svelte:window
 	onkeydown={(e) => {
-		if (e.key === 'Escape' && selected.size > 0 && !dialog?.open && !bootstrapDialog?.open) {
+		if (
+			e.key === 'Escape' &&
+			(selected.size > 0 || selectedSession) &&
+			!dialog?.open &&
+			!bootstrapDialog?.open &&
+			!sessionDialog?.open
+		) {
 			clearSelection();
 			announce = 'Selection cleared';
 		}
@@ -526,18 +582,37 @@
 					<tr class={hasErrors ? 'rule-fail' : ''}>
 						<th
 							scope="row"
-							class="sticky left-0 z-10 border-r-2 border-b-2 border-ink px-3 py-2 text-left whitespace-nowrap {hasErrors
+							class="sticky left-0 z-10 border-r-2 border-b-2 border-ink p-0 text-left whitespace-nowrap {selectedSession ===
+							row.slot
+								? 'cell-selected'
+								: ''} {hasErrors
 								? 'bg-coral'
-								: 'bg-paper'}"
+								: rowIsPublicHoliday(row.slot)
+									? 'bg-steel'
+									: 'bg-paper'}"
 						>
-							{row.label}
-							{#if hasErrors}
-								<span class="ml-1 font-black" aria-hidden="true">⚠</span>
-								<span class="sr-only">— staffing rules not met, see issues below the table</span>
+							{#snippet rowHeading()}
+								{row.label}
+								{#if hasErrors}
+									<span class="ml-1 font-black" aria-hidden="true">⚠</span>
+									<span class="sr-only">— staffing rules not met, see issues below the table</span>
+								{/if}
+								<span class="block text-xs font-normal">
+									{dayDateLabel(data.week, row.day.value)} · {row.period.times}
+								</span>
+							{/snippet}
+							{#if isAdmin}
+								<button
+									type="button"
+									class="block h-full w-full cursor-pointer px-3 py-2 text-left"
+									aria-label={`${row.label}${rowIsPublicHoliday(row.slot) ? ' (public holiday)' : ''}${selectedSession === row.slot ? ' (selected)' : ''}. Select session`}
+									onclick={() => selectSession(row)}
+								>
+									{@render rowHeading()}
+								</button>
+							{:else}
+								<span class="block px-3 py-2">{@render rowHeading()}</span>
 							{/if}
-							<span class="block text-xs font-normal">
-								{dayDateLabel(data.week, row.day.value)} · {row.period.times}
-							</span>
 						</th>
 						{#each data.rotaUsers as user, colIdx (user.id)}
 							{@const cellId = `${user.id}|${row.slot}`}
@@ -609,6 +684,17 @@
 				Clear
 			</button>
 		</div>
+	{:else if isAdmin && sessionRow}
+		<div
+			role="toolbar"
+			aria-label="Selected session"
+			class="mt-3 flex flex-wrap items-center gap-3 border-2 border-ink bg-lilac px-3 py-2 shadow-brutal-sm"
+		>
+			<span class="text-sm font-bold">{sessionRow.label} session selected</span>
+			<button type="button" class="nb-btn px-3 py-1 text-xs" onclick={() => sessionDialog?.showModal()}>
+				Set value…
+			</button>
+		</div>
 	{/if}
 
 	{#if isAdmin}
@@ -629,7 +715,8 @@
 		<p class="mt-2 text-xs text-neutral-700">
 			Click selects a cell — ⌘/Ctrl-click adds more, ⇧-click a range, Esc clears. Set values via
 			the selection bar, or double-click / press Enter on a cell. ⌘/Ctrl+C copies the focused
-			cell, ⌘/Ctrl+V pastes to it or the selection{copiedLabel
+			cell, ⌘/Ctrl+V pastes to it or the selection. Clicking a session header (e.g. Monday AM)
+			selects the whole session — Set value there marks it as a Public holiday{copiedLabel
 				? ` — clipboard: ${copiedLabel}`
 				: ''}.
 		</p>
@@ -690,6 +777,7 @@
 		<li><span class="inline-block border-2 border-ink bg-sky px-2 py-0.5 font-bold">Ratho</span></li>
 		<li><span class="inline-block border-2 border-ink bg-coral px-2 py-0.5 font-bold">Off sick</span></li>
 		<li><span class="inline-block border-2 border-ink bg-lilac px-2 py-0.5 font-bold">Annual leave</span></li>
+		<li><span class="inline-block border-2 border-ink bg-steel px-2 py-0.5 font-bold">Public holiday</span></li>
 		<li>
 			<span class="inline-block border-2 border-ink bg-accent px-2 py-0.5 font-bold">
 				Admin / surgery / special
@@ -875,4 +963,52 @@
 		</button>
 		<p class="text-xs">Nothing is saved until you press Save rota — or close this to start blank.</p>
 	</div>
+</dialog>
+
+<!-- Session-status picker: opened from the selection bar when a session row
+     header is selected. Public holiday is the only session-level status for
+     now; each choice confirms before applying to every user on the row. -->
+<dialog
+	bind:this={sessionDialog}
+	class="m-auto w-[min(100%-1.5rem,24rem)] border-4 border-ink bg-paper p-0 shadow-brutal backdrop:bg-ink/60"
+>
+	{#if sessionRow}
+		<div class="flex items-center justify-between gap-4 border-b-2 border-ink bg-lilac px-4 py-3">
+			<h2 class="font-black uppercase">
+				{sessionRow.label}
+				<span class="block text-xs font-bold tracking-widest">Whole session</span>
+			</h2>
+			<button
+				type="button"
+				class="cursor-pointer border-2 border-ink bg-white px-2 py-0.5 font-bold shadow-brutal-sm"
+				aria-label="Close without changing"
+				onclick={() => sessionDialog?.close()}
+			>
+				✕
+			</button>
+		</div>
+		<div class="flex flex-col gap-2.5 p-4">
+			<button
+				type="button"
+				class="flex w-full cursor-pointer items-center justify-between border-2 border-ink bg-steel px-3 py-3 text-left font-bold shadow-brutal-sm hover:-translate-x-0.5 hover:-translate-y-0.5"
+				onclick={() => setSessionHoliday(sessionRow)}
+			>
+				<span>Public holiday</span>
+				{#if rowIsPublicHoliday(sessionRow.slot)}
+					<span class="text-xs uppercase">✓ Current</span>
+				{/if}
+			</button>
+			{#if rowIsPublicHoliday(sessionRow.slot)}
+				<button
+					type="button"
+					class="w-full cursor-pointer border-2 border-ink bg-white px-3 py-3 text-left font-bold shadow-brutal-sm hover:-translate-x-0.5 hover:-translate-y-0.5"
+					onclick={() => clearSessionHoliday(sessionRow)}
+				>
+					Clear public holiday
+					<span class="block text-xs font-normal">Everyone returns to Not working.</span>
+				</button>
+			{/if}
+			<p class="text-xs">Applies to every user on the row, as unsaved edits.</p>
+		</div>
+	{/if}
 </dialog>

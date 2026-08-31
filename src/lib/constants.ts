@@ -51,7 +51,11 @@ export const OFF_STATUSES = [
 	{ value: 'annual_leave', label: 'Annual leave' },
 	{ value: 'admin_work', label: 'Admin work' },
 	{ value: 'minor_surgery', label: 'Minor surgery' },
-	{ value: 'special', label: 'Special activity' }
+	{ value: 'special', label: 'Special activity' },
+	// Session-level: set for a whole row via the rota's session header, not
+	// the per-cell picker. A slot where nobody works and at least one cell
+	// is public_holiday is exempt from all staffing rules.
+	{ value: 'public_holiday', label: 'Public holiday' }
 ] as const;
 
 export type OffStatus = (typeof OFF_STATUSES)[number]['value'];
@@ -132,7 +136,9 @@ export const CELL_OPTIONS: CellOption[] = [
 	'working:east_calder:house_visits',
 	'working:ratho',
 	'working:ratho:duty',
-	...OFF_STATUSES.map((s) => s.value)
+	// public_holiday is session-level (set via the row header), so it is a
+	// valid status but not offered in the per-cell picker.
+	...OFF_STATUSES.filter((s) => s.value !== 'public_holiday').map((s) => s.value)
 ].map((key) => {
 	const value = decodeCell(key)!;
 	return {

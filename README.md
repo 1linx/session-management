@@ -66,7 +66,12 @@ scp scripts/seed-data.json foundry:session-management/scripts/
   "can be sent to Ratho" flag tells Auto-fix who may be relocated.
 - **Session state**: Working (at a practice, optionally with a role: Duty
   doctor, EC Duty team, EC House visits) or unavailable — Not working, Off
-  sick, Annual leave, Admin work, Minor surgery, Special activity. The
+  sick, Annual leave, Admin work, Minor surgery, Special activity, Public
+  holiday. Public holiday is session-level: clicking a session's row
+  header selects the whole session, and Set value… in the selection bar
+  offers Public holiday (with a confirm), marking every user on that
+  row. Such a session — nobody working, marked as a holiday — is exempt
+  from all staffing rules. The
   Absences page totals annual leave against each person's entitlement for
   the current leave year (1 April – 31 March) and sickness as raw totals.
 - **Weeks**: the rota is managed week by week. The grid shows one week

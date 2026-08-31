@@ -145,6 +145,17 @@ function byDutyFairness(ctx: Ctx, slot: string) {
 }
 
 function fixSlot(ctx: Ctx, slot: string) {
+	// Public-holiday sessions (nobody working, at least one cell marked
+	// Public holiday) are exempt from every rule — leave them untouched,
+	// including the ANP bring-in.
+	const cells = ctx.staff.map((m) => cellOf(ctx, m.id, slot));
+	if (
+		cells.some((c) => c.status === 'public_holiday') &&
+		!cells.some((c) => c.status === 'working')
+	) {
+		return;
+	}
+
 	// 1. Normalise roles.
 	for (const member of ctx.staff) {
 		const cell = cellOf(ctx, member.id, slot);

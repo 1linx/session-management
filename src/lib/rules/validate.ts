@@ -68,6 +68,16 @@ export function validateWeek(
 		const found: Problem[] = [];
 		const views = cellsAt(staff, grid, slot);
 
+		// A public-holiday session (nobody working, at least one cell marked
+		// Public holiday) is exempt from every staffing rule. If someone IS
+		// working despite the marker, the rules apply as normal.
+		if (
+			views.some((v) => v.cell.status === 'public_holiday') &&
+			!views.some((v) => v.cell.status === 'working')
+		) {
+			continue;
+		}
+
 		for (const practice of PRACTICES) {
 			const here = working(views, practice);
 			const label = locationLabel(practice);

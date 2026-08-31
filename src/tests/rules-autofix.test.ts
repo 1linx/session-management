@@ -349,6 +349,20 @@ describe('autoFixWeek', () => {
 		expect(fixed['m']).toBeUndefined();
 	});
 
+	it('leaves public-holiday sessions completely alone', () => {
+		// Even an available ANP (blank cell, standard EC availability) is not
+		// brought in on a public holiday, and no duty is assigned.
+		const staff = [gp('a'), anp('n', { '1:AM': 'east_calder' })];
+		const { grid: fixed, changes } = autoFixWeek(
+			staff,
+			grid({ a: { '1:AM': 'public_holiday' } }),
+			settings()
+		);
+		expect(changes).toEqual([]);
+		expect(keyAt(fixed, 'a', '1:AM')).toBe('public_holiday');
+		expect(fixed['n']).toBeUndefined();
+	});
+
 	it('never brings an ANP in over an absence (sick, leave, activities)', () => {
 		const slots = { '1:AM': 'east_calder', '1:PM': 'east_calder', '2:AM': 'east_calder' } as const;
 		const staff = [anp('n', slots)];

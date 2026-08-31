@@ -13,6 +13,8 @@
 
 	--color-danger: #dc2626;
 	--color-navy: #003b72;
+	/* Blue-grey for Public holiday cells/rows. */
+	--color-steel: #cbd5e1;
 
 	--shadow-brutal: 4px 4px 0 0 var(--color-ink);
 	--shadow-brutal-sm: 2px 2px 0 0 var(--color-ink);

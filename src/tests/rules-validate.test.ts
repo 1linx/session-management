@@ -284,6 +284,36 @@ describe('R3 — East Calder duty team', () => {
 	});
 });
 
+describe('public holidays', () => {
+	it('exempts a public-holiday session from every staffing rule', () => {
+		const s = settings();
+		s.minRoutineClinicians.east_calder = 2;
+		s.dutyTeamMin['1:AM'] = 3;
+		s.houseVisitsRequired['1:AM'] = 2;
+		const problems = validateWeek(
+			[gp('a'), anp('n')],
+			grid({
+				a: { '1:AM': 'public_holiday' },
+				n: { '1:AM': 'public_holiday' }
+			}),
+			s
+		);
+		expect(problems['1:AM'] ?? []).toEqual([]);
+	});
+
+	it('applies the rules as normal if someone works despite the marker', () => {
+		const problems = validateWeek(
+			[gp('a'), gp('b')],
+			grid({
+				a: { '1:AM': 'public_holiday' },
+				b: { '1:AM': 'working:east_calder' }
+			}),
+			settings()
+		);
+		expect(problems['1:AM'].some((p) => p.message.includes('no duty doctor'))).toBe(true);
+	});
+});
+
 describe('R4/R5 — house visits and misplaced roles', () => {
 	it('flags a house-visit shortfall and ANP allocations', () => {
 		const s = settings();
