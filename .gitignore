@@ -54,6 +54,3 @@ deploy.sh
 
 # Real staff data — never committed; scp to the server manually
 scripts/seed-data.json
-
-# Client-supplied template with real staff names — never commit
-GP ROTA TEMPLATE.pdf
