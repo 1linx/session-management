@@ -170,6 +170,7 @@ auto-allocation history ("sub-rota") recording who was moved.
 | `/users` | admin | Add/edit users, standard sessions, order, roles |
 | `/settings` | admin | Staffing-rule requirements (minimums, duty team, house visits) |
 | `/export?week=` | all users | Download one week's rota as `rota-YYYY-MM-DD.xlsx` |
+| `/print?week=` | all users | Print sheet recreating the paper GP rota (A4 landscape; GPs/trainees only, blank EC cells for handwritten notes) |
 | `/raw` | all users | Unprocessed view of the stored data |
 
 ## Tests

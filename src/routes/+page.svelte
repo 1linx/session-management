@@ -463,12 +463,15 @@
 	{#if data.week !== data.currentWeek}
 		<a href="/" class="nb-btn px-3 py-1.5" data-sveltekit-noscroll>Back to this week</a>
 	{/if}
+	<a href={`/print?week=${data.week}`} class="nb-btn ms-auto bg-mint px-3 py-1.5">
+		Print sheet
+	</a>
 	<a
 		href={`/export?week=${data.week}`}
 		data-sveltekit-preload-data="off"
-		class="nb-btn ms-auto bg-mint px-3 py-1.5"
+		class="nb-btn bg-mint px-3 py-1.5"
 	>
-		Export this week (.xlsx)
+		Export (.xlsx)
 	</a>
 </nav>
 
