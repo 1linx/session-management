@@ -62,8 +62,12 @@ scp scripts/seed-data.json foundry:session-management/scripts/
   values" fills an empty week's grid with Working at their usual practice
   as unsaved edits (stored only when the admin presses Save), but every
   cell on the rota can be set manually, and changing someone's
-  standard sessions never deletes what's already rostered. A separate
-  "can be sent to Ratho" flag tells Auto-fix who may be relocated.
+  standard sessions never deletes what's already rostered. Each session
+  also has an **"always on duty"** tick (GPs only): "Use default values"
+  fills that session as duty doctor, Auto-fix pins them to duty there
+  whatever the cell held, and validation flags the session as an error
+  if they're working but someone else holds duty (an absence is fine).
+  A separate "can be sent to Ratho" flag tells Auto-fix who may be relocated.
 - **Session state**: Working (at a practice, optionally with a role: Duty
   doctor, EC Duty team, EC House visits) or unavailable — Not working, Off
   sick, Annual leave, Admin work, Minor surgery, Special activity, Public
@@ -110,6 +114,9 @@ Rules implemented (configurable on the Staffing rules page unless noted):
    can be excluded from AM and/or PM duty (checkboxes on their user page);
    the exclusion covers duty doctor and the EC duty team. Auto-fix never
    assigns either in that period, and validation flags it if set by hand.
+   Conversely a GP can be marked "always on duty" in specific standard
+   sessions: Auto-fix makes them the duty doctor there (demoting anyone
+   else), and validation errors if they're working but not on duty.
 2. Minimum GPs/trainees on routine clinics, per practice. The duty doctor
    counts towards it (duty is worked alongside routine patients); duty
    team and house visits don't.

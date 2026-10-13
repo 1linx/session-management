@@ -104,4 +104,45 @@ describe('parseUserForm', () => {
 		// Submitted values come back so the form can be re-rendered filled in.
 		expect(result.values.name).toBeDefined();
 	});
+
+	it('collects ticked "always duty" sessions for a GP', () => {
+		const result = parseUserForm(
+			form({ ...validFields, category: 'doctor', 'duty:1:AM': 'on', 'duty:3:PM': 'on' })
+		);
+		expect(result.ok).toBe(true);
+		if (!result.ok) return;
+		expect(result.values.standardDuty).toEqual(['1:AM', '3:PM']);
+	});
+
+	it('defaults to no "always duty" sessions', () => {
+		const result = parseUserForm(form(validFields));
+		expect(result.ok).toBe(true);
+		if (!result.ok) return;
+		expect(result.values.standardDuty).toEqual([]);
+	});
+
+	it('rejects "always duty" for a non-GP', () => {
+		const result = parseUserForm(form({ ...validFields, category: 'anp', 'duty:1:AM': 'on' }));
+		expect(result.ok).toBe(false);
+		if (result.ok) return;
+		expect(result.message).toMatch(/Only GPs/);
+	});
+
+	it('rejects "always duty" in a session without a practice', () => {
+		const result = parseUserForm(
+			form({ ...validFields, category: 'doctor', 'duty:2:AM': 'on' })
+		);
+		expect(result.ok).toBe(false);
+		if (result.ok) return;
+		expect(result.message).toMatch(/practice selected/);
+	});
+
+	it('rejects "always duty" in a period the user is excluded from', () => {
+		const result = parseUserForm(
+			form({ ...validFields, category: 'doctor', 'duty:1:AM': 'on', dutyExemptAm: 'on' })
+		);
+		expect(result.ok).toBe(false);
+		if (result.ok) return;
+		expect(result.message).toMatch(/excluded from duty/);
+	});
 });

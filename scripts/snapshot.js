@@ -23,7 +23,7 @@ const db = new Database(dbPath, { readonly: true });
 
 const users = db
 	.prepare(
-		`SELECT name, initials, role, category, working_slots, can_work_ratho,
+		`SELECT name, initials, role, category, working_slots, standard_duty, can_work_ratho,
 		        duty_exempt_am, duty_exempt_pm, leave_entitlement,
 		        display_order, on_rota, active, password_hash
 		 FROM users ORDER BY display_order, initials`
@@ -50,6 +50,7 @@ const data = {
 		role: u.role,
 		category: u.category,
 		standardSlots: JSON.parse(u.working_slots),
+		standardDuty: JSON.parse(u.standard_duty ?? '[]'),
 		canWorkRatho: Boolean(u.can_work_ratho),
 		dutyExemptAm: Boolean(u.duty_exempt_am),
 		dutyExemptPm: Boolean(u.duty_exempt_pm),

@@ -2,7 +2,7 @@ import { error, fail, redirect } from '@sveltejs/kit';
 import { eq } from 'drizzle-orm';
 import { db } from '$lib/server/db';
 import { authSessions, scheduleEntries, users } from '$lib/server/db/schema';
-import type { StandardSlots } from '$lib/constants';
+import type { StandardDuty, StandardSlots } from '$lib/constants';
 import { hashPassword } from '$lib/server/auth';
 import { parseUserForm } from '$lib/server/user-form';
 import { broadcastChange } from '$lib/server/realtime';
@@ -17,6 +17,7 @@ export const load: PageServerLoad = async ({ params }) => {
 			role: users.role,
 			category: users.category,
 			standardSlots: users.standardSlots,
+			standardDuty: users.standardDuty,
 			canWorkRatho: users.canWorkRatho,
 			dutyExemptAm: users.dutyExemptAm,
 			dutyExemptPm: users.dutyExemptPm,
@@ -31,7 +32,11 @@ export const load: PageServerLoad = async ({ params }) => {
 	if (!user) error(404, 'User not found');
 
 	return {
-		editUser: { ...user, standardSlots: JSON.parse(user.standardSlots) as StandardSlots }
+		editUser: {
+			...user,
+			standardSlots: JSON.parse(user.standardSlots) as StandardSlots,
+			standardDuty: JSON.parse(user.standardDuty) as StandardDuty
+		}
 	};
 };
 
@@ -87,6 +92,7 @@ export const actions: Actions = {
 					role: values.role,
 					category: values.category,
 					standardSlots: JSON.stringify(values.standardSlots),
+					standardDuty: JSON.stringify(values.standardDuty),
 					canWorkRatho: values.canWorkRatho,
 					dutyExemptAm: values.dutyExemptAm,
 					dutyExemptPm: values.dutyExemptPm,

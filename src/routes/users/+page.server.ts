@@ -12,6 +12,7 @@ export const load: PageServerLoad = async () => {
 			role: users.role,
 			category: users.category,
 			standardSlots: users.standardSlots,
+			standardDuty: users.standardDuty,
 			canWorkRatho: users.canWorkRatho,
 			displayOrder: users.displayOrder,
 			onRota: users.onRota,
@@ -23,7 +24,8 @@ export const load: PageServerLoad = async () => {
 	return {
 		users: allUsers.map((u) => ({
 			...u,
-			standardSlots: JSON.parse(u.standardSlots) as Record<string, string>
+			standardSlots: JSON.parse(u.standardSlots) as Record<string, string>,
+			standardDuty: JSON.parse(u.standardDuty) as string[]
 		}))
 	};
 };

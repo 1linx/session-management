@@ -1,0 +1,1 @@
+ALTER TABLE `users` ADD `standard_duty` text DEFAULT '[]' NOT NULL;

@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { USER_ROLES, categoryLabel, locationLabel } from '$lib/constants';
+	import { USER_ROLES, WEEKDAYS, categoryLabel, locationLabel } from '$lib/constants';
 
 	let { data } = $props();
 
@@ -17,6 +17,16 @@
 			([practice, n]) => `${n} ${locationLabel(practice)}`
 		);
 		return `${entries.length} session${entries.length === 1 ? '' : 's'} (${parts.join(', ')})`;
+	}
+	/** "Mon AM, Thu PM" for the sessions someone always takes duty in. */
+	function dutyLabel(slots: string[]): string {
+		return slots
+			.map((slot) => {
+				const [day, period] = slot.split(':');
+				const label = WEEKDAYS.find((d) => d.value === Number(day))?.label ?? day;
+				return `${label.slice(0, 3)} ${period}`;
+			})
+			.join(', ');
 	}
 </script>
 
@@ -51,6 +61,9 @@
 					<td>{roleLabel(user.role)}</td>
 					<td>
 						{slotsLabel(user.standardSlots)}{user.canWorkRatho ? ' · can cover Ratho' : ''}
+						{#if user.standardDuty.length > 0}
+							<span class="block text-sm">Always on duty: {dutyLabel(user.standardDuty)}</span>
+						{/if}
 					</td>
 					<td>{user.displayOrder}</td>
 					<td>

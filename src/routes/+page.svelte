@@ -83,7 +83,8 @@
 			category: u.category,
 			canWorkRatho: u.canWorkRatho,
 			dutyExempt: { AM: u.dutyExemptAm, PM: u.dutyExemptPm },
-			standardSlots: u.standardSlots
+			standardSlots: u.standardSlots,
+			standardDuty: u.standardDuty
 		}))
 	);
 
@@ -132,12 +133,17 @@
 	// stored until the admin presses Save.
 	let filledFrom = $state<'defaults' | 'defaults-autofix' | null>(null);
 
-	/** Everyone Working at their usual practice, from standard availability. */
+	/**
+	 * Everyone Working at their usual practice, from standard availability —
+	 * already as duty doctor in the sessions they always take duty.
+	 */
 	function useDefaultValues() {
 		for (const user of data.rotaUsers) {
 			for (const slot of ALL_SLOTS) {
 				const practice = user.standardSlots[slot];
-				if (practice) cellValues[`${user.id}|${slot}`] = `working:${practice}`;
+				if (!practice) continue;
+				const duty = user.standardDuty.includes(slot) ? ':duty' : '';
+				cellValues[`${user.id}|${slot}`] = `working:${practice}${duty}`;
 			}
 		}
 		filledFrom = 'defaults';

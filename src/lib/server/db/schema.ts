@@ -31,6 +31,13 @@ export const users = sqliteTable('users', {
 	 * for populating new weeks, never a restriction.
 	 */
 	standardSlots: text('working_slots').notNull().default('{}'),
+	/**
+	 * Sessions this person ALWAYS takes duty in: a JSON array of slot keys,
+	 * e.g. '["2:AM","4:PM"]'. Only meaningful for slots in `standardSlots`.
+	 * Auto-fix makes them the duty doctor there; validation flags any week
+	 * where they are working but not on duty.
+	 */
+	standardDuty: text('standard_duty').notNull().default('[]'),
 	/** Whether this person can be sent to Ratho when cover is needed. */
 	canWorkRatho: integer('can_work_ratho', { mode: 'boolean' }).notNull().default(false),
 	/** Excluded from duty (duty doctor / EC duty team) in AM sessions. */

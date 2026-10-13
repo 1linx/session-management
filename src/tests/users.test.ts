@@ -112,6 +112,41 @@ describe('edit user action', () => {
 		expect(row.name).toBe('Renamed');
 	});
 
+	it('stores and clears the "always duty" sessions', async () => {
+		const admin = await createUser({ role: 'admin' });
+		const target = await createUser({ initials: 'NP' });
+
+		await swallowRedirect(
+			editActions.save(
+				editEvent(
+					target.id,
+					{
+						...baseFields,
+						category: 'doctor',
+						'slot:1:AM': 'east_calder',
+						'slot:4:PM': 'ratho',
+						'duty:1:AM': 'on',
+						'duty:4:PM': 'on',
+						password: ''
+					},
+					adminLocals(admin.id)
+				)
+			)
+		);
+		expect(JSON.parse((await getUser('NP')).standardDuty)).toEqual(['1:AM', '4:PM']);
+
+		await swallowRedirect(
+			editActions.save(
+				editEvent(
+					target.id,
+					{ ...baseFields, category: 'doctor', 'slot:1:AM': 'east_calder', password: '' },
+					adminLocals(admin.id)
+				)
+			)
+		);
+		expect(JSON.parse((await getUser('NP')).standardDuty)).toEqual([]);
+	});
+
 	it('keeps the password when the field is blank, replaces it when set', async () => {
 		const admin = await createUser({ role: 'admin' });
 		const target = await createUser({ initials: 'NP', password: 'original-pass' });

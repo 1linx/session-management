@@ -214,3 +214,9 @@ export const ALL_SLOTS: string[] = WEEKDAYS.flatMap((day) =>
  * populating new weeks — any session can still be set manually.
  */
 export type StandardSlots = Partial<Record<string, LocationValue>>;
+
+/**
+ * Slot keys in which a user always takes duty (a subset of their standard
+ * sessions). Stored as a JSON array on the user.
+ */
+export type StandardDuty = string[];

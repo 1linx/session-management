@@ -3,6 +3,8 @@ import {
 	USER_CATEGORIES,
 	USER_ROLES,
 	isLocation,
+	slotPeriod,
+	type StandardDuty,
 	type StandardSlots
 } from '$lib/constants';
 
@@ -12,6 +14,7 @@ export type UserFormValues = {
 	role: string;
 	category: string;
 	standardSlots: StandardSlots;
+	standardDuty: StandardDuty;
 	canWorkRatho: boolean;
 	dutyExemptAm: boolean;
 	dutyExemptPm: boolean;
@@ -29,9 +32,11 @@ export type UserFormResult =
 /** Parse and validate the shared add/edit user form. */
 export function parseUserForm(data: FormData): UserFormResult {
 	const standardSlots: StandardSlots = {};
+	const standardDuty: StandardDuty = [];
 	for (const slot of ALL_SLOTS) {
 		const value = String(data.get(`slot:${slot}`) ?? 'none');
 		if (isLocation(value)) standardSlots[slot] = value;
+		if (data.get(`duty:${slot}`) === 'on') standardDuty.push(slot);
 	}
 
 	const values: UserFormValues = {
@@ -42,6 +47,7 @@ export function parseUserForm(data: FormData): UserFormResult {
 		role: String(data.get('role') ?? ''),
 		category: String(data.get('category') ?? ''),
 		standardSlots,
+		standardDuty,
 		canWorkRatho: data.get('canWorkRatho') === 'on',
 		dutyExemptAm: data.get('dutyExemptAm') === 'on',
 		dutyExemptPm: data.get('dutyExemptPm') === 'on',
@@ -63,6 +69,22 @@ export function parseUserForm(data: FormData): UserFormResult {
 	if (!USER_ROLES.some((r) => r.value === values.role)) return invalid('Choose a user type.');
 	if (!USER_CATEGORIES.some((c) => c.value === values.category)) {
 		return invalid('Choose a category.');
+	}
+	// "Always on duty" only makes sense for a GP, in a session they normally
+	// work, and never in a period they're excluded from duty.
+	if (values.standardDuty.length > 0) {
+		if (values.category !== 'doctor') {
+			return invalid('Only GPs can be set to always take duty — untick the Duty boxes.');
+		}
+		if (values.standardDuty.some((slot) => !(slot in values.standardSlots))) {
+			return invalid('Duty can only be ticked for sessions with a practice selected.');
+		}
+		const exempt = { AM: values.dutyExemptAm, PM: values.dutyExemptPm };
+		if (values.standardDuty.some((slot) => exempt[slotPeriod(slot)])) {
+			return invalid(
+				'Someone excluded from duty in a period cannot always take duty in that period.'
+			);
+		}
 	}
 	if (!Number.isInteger(values.displayOrder)) {
 		return invalid('Rota order must be a whole number.');

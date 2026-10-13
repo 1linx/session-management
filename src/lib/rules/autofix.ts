@@ -17,7 +17,10 @@
  *      any GP; strip invalid roles elsewhere (duty team / house visits at
  *      Ratho; duty held by a non-GP; duty or duty team held by someone
  *      excluded from duty in that period — the AM/PM exemption covers
- *      both; duplicate duty doctors — the fairest keeps it).
+ *      both). A GP working in a session their standard sessions mark as
+ *      "always duty" is made duty doctor there, whatever their cell held;
+ *      duplicate duty doctors are then demoted — an "always duty" GP
+ *      keeps it, otherwise the fairest.
  *   2. Ensure one duty doctor at each practice. Candidates are routine GPs
  *      already working there who aren't excluded from duty that period; if
  *      Ratho has none, a routine East Calder GP with canWorkRatho (same
@@ -202,6 +205,26 @@ function fixSlot(ctx: Ctx, slot: string) {
 			}
 		}
 		if (cell.status !== 'working') continue;
+		// A GP who always takes duty in this session is pinned to it at the
+		// practice they're working at (the user form guarantees GP + not
+		// exempt, but check anyway — the rule never overrides those).
+		if (
+			member.standardDuty.includes(slot) &&
+			member.category === 'doctor' &&
+			!exempt &&
+			cell.location !== null
+		) {
+			if (cell.role !== 'duty') {
+				setCell(
+					ctx,
+					member,
+					slot,
+					{ status: 'working', location: cell.location, role: 'duty' },
+					'always takes duty in this session'
+				);
+			}
+			continue;
+		}
 		// GP trainees working at East Calder always do house visits in AM
 		// sessions, whatever role their cell held.
 		if (
@@ -236,10 +259,12 @@ function fixSlot(ctx: Ctx, slot: string) {
 	}
 
 	for (const practice of ['east_calder', 'ratho'] as LocationValue[]) {
-		// 1b. Demote duplicate duty doctors — the lowest-ratio one keeps it.
+		// 1b. Demote duplicate duty doctors — an "always duty" GP keeps it,
+		// otherwise the lowest-ratio one does.
+		const fixedDuty = (m: StaffMember) => (m.standardDuty.includes(slot) ? 0 : 1);
 		const dutyDocs = workingAt(ctx, slot, practice)
 			.filter((m) => cellOf(ctx, m.id, slot).role === 'duty')
-			.sort(byDutyFairness(ctx, slot));
+			.sort((a, b) => fixedDuty(a) - fixedDuty(b) || byDutyFairness(ctx, slot)(a, b));
 		for (const extra of dutyDocs.slice(1)) {
 			setCell(
 				ctx,

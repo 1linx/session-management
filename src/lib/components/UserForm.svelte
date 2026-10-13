@@ -7,6 +7,7 @@
 		USER_ROLES,
 		WEEKDAYS,
 		slotKey,
+		type StandardDuty,
 		type StandardSlots
 	} from '$lib/constants';
 
@@ -16,6 +17,8 @@
 		role?: string;
 		category?: string;
 		standardSlots?: StandardSlots;
+		/** Slot keys where this person always takes duty (subset of standardSlots). */
+		standardDuty?: StandardDuty;
 		canWorkRatho?: boolean;
 		dutyExemptAm?: boolean;
 		dutyExemptPm?: boolean;
@@ -96,7 +99,9 @@
 		<p class="mb-3 text-sm">
 			For each half-day session, pick the practice this person normally works at (or “—” if
 			they don't). “Use default values” on an empty week fills the rota from this; any session
-			can still be set manually.
+			can still be set manually. Tick “Duty” for a session where this person (a GP) always takes
+			duty: Auto-fix makes them the duty doctor there, and validation flags the week if they're
+			working but someone else holds it.
 		</p>
 		<table class="border-collapse">
 			<thead>
@@ -106,6 +111,10 @@
 						<th scope="col" class="px-3 pb-1 text-sm uppercase">
 							{period.label}
 							<span class="block text-xs font-normal normal-case">{period.times}</span>
+						</th>
+						<th scope="col" class="px-3 pb-1 text-sm uppercase">
+							{period.label} Duty
+							<span class="block text-xs font-normal normal-case">always</span>
 						</th>
 					{/each}
 				</tr>
@@ -128,6 +137,15 @@
 										<option value={location.value}>{location.label}</option>
 									{/each}
 								</select>
+							</td>
+							<td class="px-3 py-1 text-center">
+								<input
+									type="checkbox"
+									name={`duty:${slot}`}
+									checked={values.standardDuty?.includes(slot) ?? false}
+									aria-label={`${day.label} ${period.label} always on duty`}
+									class="size-5 align-middle accent-ink"
+								/>
 							</td>
 						{/each}
 					</tr>

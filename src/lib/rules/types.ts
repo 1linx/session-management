@@ -7,7 +7,7 @@
  * side effects. The rota page runs validateWeek() live in the browser; the
  * Auto-fix server action runs autoFixWeek() on saved data.
  */
-import type { CellValue, Period, StandardSlots } from '$lib/constants';
+import type { CellValue, Period, StandardDuty, StandardSlots } from '$lib/constants';
 
 /** The subset of a user the rules need. */
 export type StaffMember = {
@@ -24,6 +24,12 @@ export type StaffMember = {
 	 * ANP with a blank "Not working" cell onto the EC duty team.
 	 */
 	standardSlots: StandardSlots;
+	/**
+	 * Slots in which they ALWAYS take duty at the practice they're working
+	 * at. Auto-fix pins them as duty doctor there; validation flags a
+	 * session where they're working but someone else holds duty.
+	 */
+	standardDuty: StandardDuty;
 };
 
 /** One week of cells: userId → slotKey ("1:AM") → cell state. */

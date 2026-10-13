@@ -10,6 +10,7 @@ import {
 	type CellValue,
 	type LocationValue,
 	type SessionRole,
+	type StandardDuty,
 	type StandardSlots
 } from '$lib/constants';
 import { addWeeks, currentWeekStart, isISODate, mondayOf, resolveWeek } from '$lib/dates';
@@ -26,6 +27,7 @@ async function loadRotaUsers() {
 			initials: users.initials,
 			category: users.category,
 			standardSlots: users.standardSlots,
+			standardDuty: users.standardDuty,
 			canWorkRatho: users.canWorkRatho,
 			dutyExemptAm: users.dutyExemptAm,
 			dutyExemptPm: users.dutyExemptPm
@@ -86,7 +88,8 @@ export const load: PageServerLoad = async ({ url }) => {
 	return {
 		rotaUsers: rotaUsers.map((u) => ({
 			...u,
-			standardSlots: JSON.parse(u.standardSlots) as StandardSlots
+			standardSlots: JSON.parse(u.standardSlots) as StandardSlots,
+			standardDuty: JSON.parse(u.standardDuty) as StandardDuty
 		})),
 		grid,
 		week,

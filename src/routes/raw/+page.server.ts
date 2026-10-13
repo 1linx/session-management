@@ -13,6 +13,7 @@ export const load: PageServerLoad = async () => {
 			role: users.role,
 			category: users.category,
 			standardSlots: users.standardSlots,
+			standardDuty: users.standardDuty,
 			canWorkRatho: users.canWorkRatho,
 			leaveEntitlement: users.leaveEntitlement,
 			displayOrder: users.displayOrder,

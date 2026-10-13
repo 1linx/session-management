@@ -4,7 +4,9 @@
  * Implemented rules (from the client brief):
  *  R1  Each practice must have exactly one duty doctor per session, and the
  *      duty doctor must be a GP (not a trainee or ANP) who is not excluded
- *      from duty in that period (per-user AM/PM exemptions).
+ *      from duty in that period (per-user AM/PM exemptions). A GP whose
+ *      standard sessions mark a slot as "always duty" must hold duty there
+ *      whenever they're working (error when someone else has it).
  *  R2  Each practice must have at least the configured minimum of GPs +
  *      GP trainees on routine clinics per session. The duty doctor counts
  *      towards this minimum (they still see routine patients); duty team
@@ -104,6 +106,18 @@ export function validateWeek(
 				found.push({
 					severity: 'error',
 					message: `${label}: excluded from ${slotPeriod(slot)} duty (${names(exemptDuty)})`
+				});
+			}
+			// "Always duty" GPs: working here but not on duty is an error. An
+			// absence (leave, sick, not working) is fine — the rule only binds
+			// when they're actually in.
+			const missingFixedDuty = here.filter(
+				(v) => v.member.standardDuty.includes(slot) && v.cell.role !== 'duty'
+			);
+			if (missingFixedDuty.length > 0) {
+				found.push({
+					severity: 'error',
+					message: `${label}: always on duty in this session but not assigned (${names(missingFixedDuty)})`
 				});
 			}
 

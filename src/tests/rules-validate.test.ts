@@ -6,14 +6,16 @@ import { decodeCell } from '$lib/constants';
 const gp = (
 	id: string,
 	canWorkRatho = false,
-	dutyExempt: StaffMember['dutyExempt'] = { AM: false, PM: false }
+	dutyExempt: StaffMember['dutyExempt'] = { AM: false, PM: false },
+	standardDuty: string[] = []
 ): StaffMember => ({
 	id,
 	initials: id.toUpperCase(),
 	category: 'doctor',
 	canWorkRatho,
 	dutyExempt,
-	standardSlots: {}
+	standardSlots: {},
+	standardDuty
 });
 const trainee = (id: string): StaffMember => ({
 	id,
@@ -21,7 +23,8 @@ const trainee = (id: string): StaffMember => ({
 	category: 'gp_trainee',
 	canWorkRatho: false,
 	dutyExempt: { AM: false, PM: false },
-	standardSlots: {}
+	standardSlots: {},
+	standardDuty: []
 });
 const anp = (
 	id: string,
@@ -32,7 +35,8 @@ const anp = (
 	category: 'anp',
 	canWorkRatho: false,
 	dutyExempt,
-	standardSlots: {}
+	standardSlots: {},
+	standardDuty: []
 });
 
 /** Build a grid from encoded keys: { userId: { '1:AM': 'working:east_calder:duty' } } */
@@ -443,5 +447,49 @@ describe('R4/R5 — house visits and misplaced roles', () => {
 		expect(
 			problems['1:AM'].some((p) => p.message.includes('1 of 2 required routine'))
 		).toBe(true);
+	});
+});
+
+describe('R1 — "always duty" sessions', () => {
+	const noExempt = { AM: false, PM: false };
+	/** Just the always-duty messages — empty practices are flagged regardless. */
+	const fixedDutyProblems = (problems: ReturnType<typeof validateWeek>) =>
+		Object.values(problems)
+			.flat()
+			.map((p) => p.message)
+			.filter((m) => m.includes('always on duty'));
+
+	it('flags an always-duty GP who is working but not on duty', () => {
+		const problems = validateWeek(
+			[gp('a'), gp('b', false, noExempt, ['1:AM'])],
+			grid({ a: { '1:AM': 'working:east_calder:duty' }, b: { '1:AM': 'working:east_calder' } }),
+			settings()
+		);
+		expect(problems['1:AM'].map((p) => p.message)).toContain(
+			'East Calder: always on duty in this session but not assigned (B)'
+		);
+		expect(slotHasErrors(problems, '1:AM')).toBe(true);
+	});
+
+	it('is satisfied when they hold duty, and silent when they are absent', () => {
+		const staff = [gp('a'), gp('b', false, noExempt, ['1:AM', '1:PM'])];
+		const problems = validateWeek(
+			staff,
+			grid({
+				a: { '1:AM': 'working:east_calder', '1:PM': 'working:east_calder:duty' },
+				b: { '1:AM': 'working:east_calder:duty', '1:PM': 'annual_leave' }
+			}),
+			settings()
+		);
+		expect(fixedDutyProblems(problems)).toEqual([]);
+	});
+
+	it('only binds in the ticked session', () => {
+		const problems = validateWeek(
+			[gp('a'), gp('b', false, noExempt, ['1:AM'])],
+			grid({ a: { '1:PM': 'working:east_calder:duty' }, b: { '1:PM': 'working:east_calder' } }),
+			settings()
+		);
+		expect(fixedDutyProblems(problems)).toEqual([]);
 	});
 });

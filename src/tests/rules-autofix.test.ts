@@ -7,14 +7,16 @@ import { decodeCell, encodeCell } from '$lib/constants';
 const gp = (
 	id: string,
 	canWorkRatho = false,
-	dutyExempt: StaffMember['dutyExempt'] = { AM: false, PM: false }
+	dutyExempt: StaffMember['dutyExempt'] = { AM: false, PM: false },
+	standardDuty: string[] = []
 ): StaffMember => ({
 	id,
 	initials: id.toUpperCase(),
 	category: 'doctor',
 	canWorkRatho,
 	dutyExempt,
-	standardSlots: {}
+	standardSlots: {},
+	standardDuty
 });
 const anp = (
 	id: string,
@@ -26,7 +28,8 @@ const anp = (
 	category: 'anp',
 	canWorkRatho: false,
 	dutyExempt,
-	standardSlots
+	standardSlots,
+	standardDuty: []
 });
 const trainee = (id: string): StaffMember => ({
 	id,
@@ -34,7 +37,8 @@ const trainee = (id: string): StaffMember => ({
 	category: 'gp_trainee',
 	canWorkRatho: false,
 	dutyExempt: { AM: false, PM: false },
-	standardSlots: {}
+	standardSlots: {},
+	standardDuty: []
 });
 
 function grid(cells: Record<string, Record<string, string>>): WeekGrid {
@@ -637,5 +641,85 @@ describe('autoFixWeek', () => {
 		const problems = validateWeek(staff, fixed, s);
 		// EC is fully fixed; only Ratho (nobody there at all) remains.
 		expect((problems['1:AM'] ?? []).every((p) => p.message.startsWith('Ratho'))).toBe(true);
+	});
+});
+
+describe('autoFixWeek — "always duty" sessions', () => {
+	const noExempt = { AM: false, PM: false };
+
+	it('pins an always-duty GP to duty doctor in that session', () => {
+		const staff = [gp('a'), gp('b', false, noExempt, ['1:AM'])];
+		const { grid: fixed, changes } = autoFixWeek(
+			staff,
+			grid({ a: { '1:AM': 'working:east_calder' }, b: { '1:AM': 'working:east_calder' } }),
+			settings()
+		);
+		expect(keyAt(fixed, 'b', '1:AM')).toBe('working:east_calder:duty');
+		expect(keyAt(fixed, 'a', '1:AM')).toBe('working:east_calder');
+		expect(changes.map((c) => c.reason)).toEqual(['always takes duty in this session']);
+	});
+
+	it('takes duty off whoever else held it, even a fairer GP', () => {
+		const staff = [gp('a'), gp('b', false, noExempt, ['1:AM'])];
+		const { grid: fixed } = autoFixWeek(
+			staff,
+			grid({
+				a: { '1:AM': 'working:east_calder:duty' },
+				b: { '1:AM': 'working:east_calder:house_visits' }
+			}),
+			settings()
+		);
+		expect(keyAt(fixed, 'b', '1:AM')).toBe('working:east_calder:duty');
+		expect(keyAt(fixed, 'a', '1:AM')).toBe('working:east_calder');
+	});
+
+	it('follows the practice they are working at', () => {
+		const staff = [gp('a', false, noExempt, ['2:PM'])];
+		const { grid: fixed } = autoFixWeek(
+			staff,
+			grid({ a: { '2:PM': 'working:ratho' } }),
+			settings()
+		);
+		expect(keyAt(fixed, 'a', '2:PM')).toBe('working:ratho:duty');
+	});
+
+	it('only applies to that session, and never to an absence', () => {
+		const staff = [gp('a'), gp('b', false, noExempt, ['1:AM'])];
+		const { grid: fixed, changes } = autoFixWeek(
+			staff,
+			grid({
+				a: { '1:AM': 'working:east_calder', '1:PM': 'working:east_calder' },
+				b: { '1:AM': 'annual_leave', '1:PM': 'working:east_calder' }
+			}),
+			settings()
+		);
+		expect(keyAt(fixed, 'b', '1:AM')).toBe('annual_leave');
+		// 1:AM duty falls to A as normal; 1:PM is not a fixed slot for B.
+		expect(keyAt(fixed, 'a', '1:AM')).toBe('working:east_calder:duty');
+		expect(changes.every((c) => c.reason !== 'always takes duty in this session')).toBe(true);
+	});
+
+	it('never overrides a duty exemption or a non-GP', () => {
+		const staff = [gp('a', false, { AM: true, PM: false }, ['1:AM'])];
+		const { grid: fixed } = autoFixWeek(
+			staff,
+			grid({ a: { '1:AM': 'working:east_calder' } }),
+			settings()
+		);
+		expect(keyAt(fixed, 'a', '1:AM')).toBe('working:east_calder');
+	});
+
+	it('leaves a fixed week clean under validation', () => {
+		const staff = [gp('a'), gp('b', false, noExempt, ['1:AM'])];
+		const { grid: fixed } = autoFixWeek(
+			staff,
+			grid({
+				a: { '1:AM': 'working:east_calder:duty' },
+				b: { '1:AM': 'working:east_calder' }
+			}),
+			settings()
+		);
+		const problems = validateWeek(staff, fixed, settings());
+		expect((problems['1:AM'] ?? []).filter((p) => p.message.includes('East Calder'))).toEqual([]);
 	});
 });
