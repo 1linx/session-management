@@ -1,5 +1,11 @@
 <script lang="ts">
-	import { USER_ROLES, WEEKDAYS, categoryLabel, locationLabel } from '$lib/constants';
+	import {
+		USER_ROLES,
+		WEEKDAYS,
+		branchPractice,
+		categoryLabel,
+		locationLabel
+	} from '$lib/constants';
 
 	let { data } = $props();
 
@@ -60,7 +66,7 @@
 					<td>{categoryLabel(user.category)}</td>
 					<td>{roleLabel(user.role)}</td>
 					<td>
-						{slotsLabel(user.standardSlots)}{user.canWorkRatho ? ' · can cover Ratho' : ''}
+						{slotsLabel(user.standardSlots)}{user.canWorkRatho ? ` · can cover ${branchPractice()}` : ''}
 						{#if user.standardDuty.length > 0}
 							<span class="block text-sm">Always on duty: {dutyLabel(user.standardDuty)}</span>
 						{/if}

@@ -1,5 +1,12 @@
 <script lang="ts">
-	import { PERIODS, WEEKDAYS, slotKey, type CellValue } from '$lib/constants';
+	import {
+		PERIODS,
+		WEEKDAYS,
+		branchPractice,
+		mainPractice,
+		slotKey,
+		type CellValue
+	} from '$lib/constants';
 	import { weekLabel } from '$lib/dates';
 
 	let { data } = $props();
@@ -12,7 +19,7 @@
 		}))
 	);
 
-	/** "Iain McLeod" → "Dr McLeod", like the paper template's column heads. */
+	/** "Jo Bloggs" → "Dr Bloggs", like the paper template's column heads. */
 	const drName = (name: string) => `Dr ${name.trim().split(/\s+/).at(-1)}`;
 
 	const blank: CellValue = { status: 'not_working', location: null, role: null };
@@ -25,7 +32,7 @@
 	function note(cell: CellValue): string {
 		switch (cell.status) {
 			case 'working':
-				return cell.location === 'ratho' ? 'RATHO' : '';
+				return cell.location === 'ratho' ? branchPractice().toUpperCase() : '';
 			case 'sick':
 				return 'SICK';
 			case 'annual_leave':
@@ -62,8 +69,8 @@
 	<button type="button" class="nb-btn" onclick={() => window.print()}>Print / save as PDF</button>
 	<a href={`/?week=${data.week}`} class="nb-btn nb-btn-secondary">Back to the rota</a>
 	<p class="w-full max-w-prose text-sm">
-		Recreates the paper GP rota: blank cells are East Calder sessions (space for notes), grey
-		cells are unavailable, RATHO marks Ratho sessions. Prints landscape on one A4 page. ANPs are
+		Recreates the paper GP rota: blank cells are {mainPractice()} sessions (space for notes),
+		grey cells are unavailable, {branchPractice().toUpperCase()} marks {branchPractice()} sessions. Prints landscape on one A4 page. ANPs are
 		not included, matching the original.
 	</p>
 </div>

@@ -1,5 +1,12 @@
 <script lang="ts">
-	import { PERIODS, WEEKDAYS, slotKey } from '$lib/constants';
+	import {
+		PERIODS,
+		WEEKDAYS,
+		branchPractice,
+		locationShort,
+		mainPractice,
+		slotKey
+	} from '$lib/constants';
 	import { weekLabel } from '$lib/dates';
 
 	let { data } = $props();
@@ -20,9 +27,10 @@
 <p class="mb-6 max-w-prose">
 	How duty is being spread across the GPs, over the last {data.windowDays} days (since
 	{weekLabel(data.windowStart)}). Auto-fix assigns duty to the lowest tally first — the tally is
-	duty sessions ÷ sessions worked, counting <strong>East Calder sessions only</strong> (Ratho
-	duty falls to whoever is on site, so it would skew the balance) and counting a duty-team
-	session the same as duty. Someone working twice the EC sessions is expected to carry twice
+	duty sessions ÷ sessions worked, counting <strong>{mainPractice()} sessions only</strong>
+	({branchPractice()} duty falls to whoever is on site, so it would skew the balance) and counting a
+	duty-team session the same as duty. Someone working twice the {locationShort('east_calder')} sessions
+	is expected to carry twice
 	the duty. Doctors aren't given AM and PM duty on the same day unless unavoidable, and
 	near-equal tallies avoid repeating the slot a doctor held the previous week.
 </p>
@@ -34,8 +42,8 @@
 			<thead>
 				<tr>
 					<th scope="col">GP</th>
-					<th scope="col" class="text-right">EC sessions worked</th>
-					<th scope="col" class="text-right">EC duty + duty team</th>
+					<th scope="col" class="text-right">{locationShort('east_calder')} sessions worked</th>
+					<th scope="col" class="text-right">{locationShort('east_calder')} duty + duty team</th>
 					<th scope="col" class="text-right">Duty tally</th>
 					<th scope="col">Excluded from duty</th>
 				</tr>
@@ -47,7 +55,7 @@
 							{doc.name}
 							<span class="ml-1 border-2 border-ink bg-paper px-1 text-xs">{doc.initials}</span>
 							{#if doc.rathoOnly}
-								<span class="sr-only">(works Ratho sessions only)</span>
+								<span class="sr-only">(works {branchPractice()} sessions only)</span>
 							{/if}
 						</th>
 						<td class="text-right tabular-nums">{doc.worked}</td>
@@ -64,8 +72,8 @@
 		counts the week on screen, including unsaved edits.
 		<span class="mt-1 block">
 			<span class="mr-1 inline-block border-2 border-ink bg-sky px-2 py-0.5 font-bold">Blue rows</span>
-			work Ratho sessions only (per their standard availability), so they sit outside the
-			East Calder balancing — their duty can only be the Ratho slot.
+			work {branchPractice()} sessions only (per their standard availability), so they sit
+			outside the {mainPractice()} balancing — their duty can only be the {branchPractice()} slot.
 		</span>
 	</p>
 </section>
@@ -98,7 +106,7 @@
 										{#each holders as holder (holder.initials + (holder.location ?? ''))}
 											<span class="mr-1 inline-block font-bold">
 												{holder.initials}<span class="font-normal"
-													>&nbsp;({holder.location === 'ratho' ? 'R' : 'EC'})</span
+													>&nbsp;({locationShort(holder.location)})</span
 												>
 											</span>
 										{:else}
@@ -113,7 +121,7 @@
 			</table>
 		</div>
 		<p class="mt-2 max-w-prose text-sm">
-			EC = East Calder, R = Ratho. Every saved duty assignment in the window appears here — this
+			{locationShort('east_calder')} = {mainPractice()}, {locationShort('ratho')} = {branchPractice()}. Every saved duty assignment in the window appears here — this
 			is the record to answer any fairness questions.
 		</p>
 	{/if}

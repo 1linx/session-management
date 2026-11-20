@@ -14,6 +14,8 @@
 		cellLabel,
 		decodeCell,
 		locationLabel,
+		branchPractice,
+		mainPractice,
 		roleChip,
 		slotKey
 	} from '$lib/constants';
@@ -403,8 +405,8 @@
 	}
 
 	const groupClasses: Record<string, string> = {
-		'East Calder': 'bg-mint',
-		Ratho: 'bg-sky',
+		[mainPractice()]: 'bg-mint',
+		[branchPractice()]: 'bg-sky',
 		'Not available': 'bg-white'
 	};
 
@@ -794,8 +796,8 @@
 <section class="mt-8" aria-label="Key">
 	<h2 class="mb-2 text-sm font-bold uppercase">Key</h2>
 	<ul class="flex flex-wrap items-center gap-3 text-sm">
-		<li><span class="inline-block border-2 border-ink bg-mint px-2 py-0.5 font-bold">East Calder</span></li>
-		<li><span class="inline-block border-2 border-ink bg-sky px-2 py-0.5 font-bold">Ratho</span></li>
+		<li><span class="inline-block border-2 border-ink bg-mint px-2 py-0.5 font-bold">{mainPractice()}</span></li>
+		<li><span class="inline-block border-2 border-ink bg-sky px-2 py-0.5 font-bold">{branchPractice()}</span></li>
 		<li><span class="inline-block border-2 border-ink bg-coral px-2 py-0.5 font-bold">Off sick</span></li>
 		<li><span class="inline-block border-2 border-ink bg-lilac px-2 py-0.5 font-bold">Annual leave</span></li>
 		<li><span class="inline-block border-2 border-ink bg-steel px-2 py-0.5 font-bold">Public holiday</span></li>

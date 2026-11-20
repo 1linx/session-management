@@ -48,6 +48,31 @@ Copy it to the server by hand before reseeding there:
 scp scripts/seed-data.json foundry:session-management/scripts/
 ```
 
+## Anonymised demo
+
+For showing the app to prospective clients, without any real names:
+
+```sh
+npm run demo:seed   # (re)create demo.db — fictional staff, rules and 12 weeks of history
+npm run demo        # vite dev --mode demo, reading .env.demo
+```
+
+- **Data**: [scripts/demo/seed-demo.ts](scripts/demo/seed-demo.ts) builds
+  `demo.db` from scratch with 13 fictional GPs, 2 trainees and 3 ANPs. Past
+  weeks are rostered by the real Auto-fix, so the Duty and Absences pages
+  have realistic content. The demo logins are listed at the top of that file.
+  It refuses any database whose filename doesn't contain "demo", because it
+  deletes the file first.
+- **Practice names**: the UI shows whatever `PUBLIC_MAIN_PRACTICE_NAME` /
+  `_SHORT` and `PUBLIC_BRANCH_PRACTICE_NAME` / `_SHORT` say. The defaults are
+  East Calder / EC and Ratho / R. `.env.demo` sets Riverside and Hillcrest.
+  Stored values never change, so any deployment can be relabelled.
+- **Safe by default**: `.env.demo` turns live updates off and hides the Raw
+  data page (`PUBLIC_HIDE_RAW_DATA=true`), which shows stored keys.
+- **Staged moments**: the current week opens with one GP off sick after the
+  rota was set (a red session to fix with Auto-fix). Next week is empty, so
+  opening it offers "Use default values". Reseed to reset between demos.
+
 ## Concepts
 
 - **Practices**: East Calder (default) and Ratho, both open Mon–Fri 8am–6pm.

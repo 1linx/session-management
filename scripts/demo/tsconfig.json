@@ -1,0 +1,17 @@
+{
+	// Lets tsx run scripts/demo/*.ts against the app's own rules engine:
+	// maps SvelteKit's $lib and $env aliases the same way vitest.config.ts does.
+	"compilerOptions": {
+		"target": "ES2022",
+		"module": "ESNext",
+		"moduleResolution": "bundler",
+		"strict": true,
+		"baseUrl": "../..",
+		"paths": {
+			"$lib": ["src/lib"],
+			"$lib/*": ["src/lib/*"],
+			"$env/dynamic/public": ["src/tests/env-stub.ts"],
+			"$env/dynamic/private": ["src/tests/env-stub.ts"]
+		}
+	}
+}

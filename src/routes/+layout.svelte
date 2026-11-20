@@ -33,7 +33,9 @@
 					{ href: '/duty', label: 'Duty' },
 					{ href: '/users', label: 'Users' },
 					{ href: '/settings', label: 'Staffing rules' },
-					{ href: '/raw', label: 'Raw data' }
+					// The raw view shows stored keys (real practice identifiers),
+					// so deployments like the anonymised demo can switch it off.
+					...(env.PUBLIC_HIDE_RAW_DATA === 'true' ? [] : [{ href: '/raw', label: 'Raw data' }])
 				]
 			: []
 	);

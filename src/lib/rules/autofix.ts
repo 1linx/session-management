@@ -54,7 +54,16 @@
  * Anything it cannot fix (e.g. no GP available for Ratho duty) is left
  * as-is and will still be flagged red by validation.
  */
-import { ALL_SLOTS, isClinician, slotPeriod, type CellValue, type LocationValue } from '$lib/constants';
+import {
+	ALL_SLOTS,
+	branchPractice,
+	isClinician,
+	locationLabel,
+	mainPractice,
+	slotPeriod,
+	type CellValue,
+	type LocationValue
+} from '$lib/constants';
 import type { Change, DutyContext, RotaRuleSettings, StaffMember, WeekGrid } from './types';
 
 type Ctx = {
@@ -184,7 +193,7 @@ function fixSlot(ctx: Ctx, slot: string) {
 						member,
 						slot,
 						{ status: 'working', location: 'east_calder', role: 'duty_team' },
-						'ANPs at East Calder are always on the duty team'
+						`ANPs at ${mainPractice()} are always on the duty team`
 					);
 				}
 				continue;
@@ -199,7 +208,7 @@ function fixSlot(ctx: Ctx, slot: string) {
 					member,
 					slot,
 					{ status: 'working', location: 'east_calder', role: 'duty_team' },
-					'available ANP brought in to the East Calder duty team'
+					`available ANP brought in to the ${mainPractice()} duty team`
 				);
 				continue;
 			}
@@ -244,7 +253,7 @@ function fixSlot(ctx: Ctx, slot: string) {
 			continue;
 		}
 		if (cell.location === 'ratho' && (cell.role === 'duty_team' || cell.role === 'house_visits')) {
-			setCell(ctx, member, slot, { ...cell, role: null }, 'duty team/house visits only exist at East Calder');
+			setCell(ctx, member, slot, { ...cell, role: null }, `duty team/house visits only exist at ${mainPractice()}`);
 		} else if (cell.role === 'duty' && member.category !== 'doctor') {
 			setCell(ctx, member, slot, { ...cell, role: null }, 'duty doctor must be a GP');
 		} else if ((cell.role === 'duty' || cell.role === 'duty_team') && exempt) {
@@ -289,7 +298,7 @@ function fixSlot(ctx: Ctx, slot: string) {
 					pick,
 					slot,
 					{ status: 'working', location: practice, role: 'duty' },
-					`assigned duty doctor at ${practice === 'ratho' ? 'Ratho' : 'East Calder'}`
+					`assigned duty doctor at ${locationLabel(practice)}`
 				);
 			} else if (practice === 'ratho') {
 				// Relocate an EC routine GP who is allowed to travel, if EC survives it.
@@ -311,7 +320,7 @@ function fixSlot(ctx: Ctx, slot: string) {
 						traveller,
 						slot,
 						{ status: 'working', location: 'ratho', role: 'duty' },
-						'sent to Ratho as duty doctor (no GP on site)'
+						`sent to ${branchPractice()} as duty doctor (no GP on site)`
 					);
 				}
 			}

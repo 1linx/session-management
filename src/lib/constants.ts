@@ -3,11 +3,36 @@
  * These are the single source of truth for the values stored as plain text
  * in the database — add new statuses, locations, roles or categories here.
  */
+import { env } from '$env/dynamic/public';
 
-/** The two medical practices. First entry is the default. */
+/**
+ * The two medical practices. First entry is the default ("main") practice,
+ * which runs the duty team and house visits; the second is the branch.
+ *
+ * `value` is what the database stores and never changes. The names people
+ * SEE are per-deployment: PUBLIC_MAIN_PRACTICE_NAME / _SHORT and
+ * PUBLIC_BRANCH_PRACTICE_NAME / _SHORT override them (e.g. the anonymised
+ * demo — see .env.demo). Getters, so they're read when rendered.
+ */
 export const LOCATIONS = [
-	{ value: 'east_calder', label: 'East Calder' },
-	{ value: 'ratho', label: 'Ratho' }
+	{
+		value: 'east_calder',
+		get label(): string {
+			return env.PUBLIC_MAIN_PRACTICE_NAME || 'East Calder';
+		},
+		get short(): string {
+			return env.PUBLIC_MAIN_PRACTICE_SHORT || 'EC';
+		}
+	},
+	{
+		value: 'ratho',
+		get label(): string {
+			return env.PUBLIC_BRANCH_PRACTICE_NAME || 'Ratho';
+		},
+		get short(): string {
+			return env.PUBLIC_BRANCH_PRACTICE_SHORT || 'R';
+		}
+	}
 ] as const;
 
 export type LocationValue = (typeof LOCATIONS)[number]['value'];
@@ -17,6 +42,16 @@ export const DEFAULT_LOCATION: LocationValue = LOCATIONS[0].value;
 export function locationLabel(value: string | null): string {
 	return LOCATIONS.find((l) => l.value === value)?.label ?? (value ?? '');
 }
+
+/** Abbreviation for tight spaces, e.g. "EC" / "R". */
+export function locationShort(value: string | null): string {
+	return LOCATIONS.find((l) => l.value === value)?.short ?? (value ?? '');
+}
+
+/** Display name of the main practice (duty team + house visits). */
+export const mainPractice = (): string => locationLabel('east_calder');
+/** Display name of the branch practice. */
+export const branchPractice = (): string => locationLabel('ratho');
 
 export function isLocation(value: string): value is LocationValue {
 	return LOCATIONS.some((l) => l.value === value);
@@ -141,12 +176,19 @@ export const CELL_OPTIONS: CellOption[] = [
 	...OFF_STATUSES.filter((s) => s.value !== 'public_holiday').map((s) => s.value)
 ].map((key) => {
 	const value = decodeCell(key)!;
+	// Getters: practice names come from the deployment's env (see LOCATIONS).
 	return {
 		key,
 		value,
-		label: cellLabel(value),
-		pickerLabel: value.status === 'working' ? locationLabel(value.location) : cellLabel(value),
-		group: value.status === 'working' ? locationLabel(value.location) : 'Not available'
+		get label() {
+			return cellLabel(value);
+		},
+		get pickerLabel() {
+			return value.status === 'working' ? locationLabel(value.location) : cellLabel(value);
+		},
+		get group() {
+			return value.status === 'working' ? locationLabel(value.location) : 'Not available';
+		}
 	};
 });
 

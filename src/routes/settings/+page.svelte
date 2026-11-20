@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { enhance } from '$app/forms';
-	import { PERIODS, WEEKDAYS, slotKey } from '$lib/constants';
+	import { PERIODS, WEEKDAYS, slotKey, branchPractice, mainPractice } from '$lib/constants';
 
 	let { data, form } = $props();
 
@@ -47,7 +47,7 @@
 		</p>
 		<div class="grid max-w-md gap-4 sm:grid-cols-2">
 			<div>
-				<label for="minRoutine-ec" class="nb-label">East Calder</label>
+				<label for="minRoutine-ec" class="nb-label">{mainPractice()}</label>
 				<input
 					id="minRoutine-ec"
 					name="minRoutine:east_calder"
@@ -59,7 +59,7 @@
 				/>
 			</div>
 			<div>
-				<label for="minRoutine-ratho" class="nb-label">Ratho</label>
+				<label for="minRoutine-ratho" class="nb-label">{branchPractice()}</label>
 				<input
 					id="minRoutine-ratho"
 					name="minRoutine:ratho"
@@ -75,12 +75,12 @@
 
 	<fieldset class="nb-card">
 		<legend class="border-2 border-ink bg-accent px-3 py-1 font-bold uppercase shadow-brutal-sm">
-			East Calder duty team
+			{mainPractice()} duty team
 		</legend>
 		<p class="mb-4 text-sm">
-			Staff required on the duty team per session, counting the East Calder duty doctor.
+			Staff required on the duty team per session, counting the {mainPractice()} duty doctor.
 			Minimum shades the row red when missed; desirable is a softer target. ANPs working at
-			East Calder are always on the duty team; GPs top it up to the minimum.
+			{mainPractice()} are always on the duty team; GPs top it up to the minimum.
 		</p>
 		<div class="nb-scroll">
 			<table class="nb-table">
@@ -121,7 +121,7 @@
 
 	<fieldset class="nb-card">
 		<legend class="border-2 border-ink bg-accent px-3 py-1 font-bold uppercase shadow-brutal-sm">
-			East Calder house visits
+			{mainPractice()} house visits
 		</legend>
 		<p class="mb-4 text-sm">
 			GP/trainee allocations required for house visits (12–1pm and 2–3pm) per session.

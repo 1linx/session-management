@@ -17,6 +17,8 @@ Thumbs.db
 .env.*
 !.env.example
 !.env.test
+# Anonymised demo config — fictional names, no secrets
+!.env.demo
 
 # Vite
 vite.config.js.timestamp-*

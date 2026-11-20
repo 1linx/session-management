@@ -3,6 +3,8 @@
 	import {
 		LOCATIONS,
 		PERIODS,
+		branchPractice,
+		mainPractice,
 		USER_CATEGORIES,
 		USER_ROLES,
 		WEEKDAYS,
@@ -159,7 +161,7 @@
 				checked={values.canWorkRatho ?? false}
 				class="size-5 accent-ink"
 			/>
-			Can be sent to Ratho if cover is required (used by Auto-fix)
+			Can be sent to {branchPractice()} if cover is required (used by Auto-fix)
 		</label>
 		<div class="mt-4">
 			<span class="nb-label">Excluded from duty</span>
@@ -184,7 +186,7 @@
 				</label>
 			</div>
 			<p class="mt-1 text-sm">
-				Covers duty doctor and the East Calder duty team. Auto-fix will never assign either
+				Covers duty doctor and the {mainPractice()} duty team. Auto-fix will never assign either
 				in an excluded session, and validation flags it if set by hand.
 			</p>
 		</div>

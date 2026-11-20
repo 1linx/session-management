@@ -33,6 +33,7 @@ import {
 	ALL_SLOTS,
 	isClinician,
 	locationLabel,
+	mainPractice,
 	slotPeriod,
 	type CellValue,
 	type LocationValue
@@ -65,6 +66,7 @@ export function validateWeek(
 	settings: RotaRuleSettings
 ): WeekProblems {
 	const problems: WeekProblems = {};
+	const main = mainPractice();
 
 	for (const slot of ALL_SLOTS) {
 		const found: Problem[] = [];
@@ -143,7 +145,7 @@ export function validateWeek(
 				if (misplaced.length > 0) {
 					found.push({
 						severity: 'error',
-						message: `${label}: duty team / house visits only exist at East Calder (${names(misplaced)})`
+						message: `${label}: duty team / house visits only exist at ${main} (${names(misplaced)})`
 					});
 				}
 			}
@@ -159,19 +161,19 @@ export function validateWeek(
 		if (teamCount < teamMin) {
 			found.push({
 				severity: 'error',
-				message: `East Calder: duty team has ${teamCount} of ${teamMin} required (incl. duty doctor)`
+				message: `${main}: duty team has ${teamCount} of ${teamMin} required (incl. duty doctor)`
 			});
 		} else if (teamCount < teamDesired) {
 			found.push({
 				severity: 'warning',
-				message: `East Calder: duty team has ${teamCount}, below the desirable ${teamDesired}`
+				message: `${main}: duty team has ${teamCount}, below the desirable ${teamDesired}`
 			});
 		}
 		const exemptTeam = team.filter((v) => v.member.dutyExempt[slotPeriod(slot)]);
 		if (exemptTeam.length > 0) {
 			found.push({
 				severity: 'error',
-				message: `East Calder: excluded from ${slotPeriod(slot)} duty team (${names(exemptTeam)})`
+				message: `${main}: excluded from ${slotPeriod(slot)} duty team (${names(exemptTeam)})`
 			});
 		}
 		const unmarkedAnps = ec.filter(
@@ -183,7 +185,7 @@ export function validateWeek(
 		if (unmarkedAnps.length > 0) {
 			found.push({
 				severity: 'warning',
-				message: `East Calder: ANPs always join the duty team (${names(unmarkedAnps)} not marked)`
+				message: `${main}: ANPs always join the duty team (${names(unmarkedAnps)} not marked)`
 			});
 		}
 
@@ -197,7 +199,7 @@ export function validateWeek(
 		if (visitsCount < visitsRequired) {
 			found.push({
 				severity: 'error',
-				message: `East Calder: ${visitsCount} of ${visitsRequired} required house-visit allocations${
+				message: `${main}: ${visitsCount} of ${visitsRequired} required house-visit allocations${
 					visitTrainees > 0 ? ' (trainees count as 0.5)' : ''
 				}`
 			});
@@ -206,7 +208,7 @@ export function validateWeek(
 		if (nonClinicianVisits.length > 0) {
 			found.push({
 				severity: 'error',
-				message: `East Calder: house visits are for GPs/trainees only (${names(nonClinicianVisits)})`
+				message: `${main}: house visits are for GPs/trainees only (${names(nonClinicianVisits)})`
 			});
 		}
 		// Trainees working at EC always do house visits in AM sessions.
@@ -217,7 +219,7 @@ export function validateWeek(
 			if (unmarkedTrainees.length > 0) {
 				found.push({
 					severity: 'warning',
-					message: `East Calder: GP trainees do house visits in AM sessions (${names(unmarkedTrainees)} not marked)`
+					message: `${main}: GP trainees do house visits in AM sessions (${names(unmarkedTrainees)} not marked)`
 				});
 			}
 		}
