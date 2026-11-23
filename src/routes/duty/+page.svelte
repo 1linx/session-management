@@ -27,11 +27,9 @@
 <p class="mb-6 max-w-prose">
 	How duty is being spread across the GPs, over the last {data.windowDays} days (since
 	{weekLabel(data.windowStart)}). Auto-fix assigns duty to the lowest tally first — the tally is
-	duty sessions ÷ sessions worked, counting <strong>{mainPractice()} sessions only</strong>
-	({branchPractice()} duty falls to whoever is on site, so it would skew the balance) and counting a
-	duty-team session the same as duty. Someone working twice the {locationShort('east_calder')} sessions
-	is expected to carry twice
-	the duty. Doctors aren't given AM and PM duty on the same day unless unavoidable, and
+	duty sessions ÷ sessions worked, counting sessions at <strong>both {mainPractice()} and
+	{branchPractice()}</strong> and counting a duty-team session the same as duty. Someone working twice
+	the sessions is expected to carry twice the duty. Doctors aren't given AM and PM duty on the same day unless unavoidable, and
 	near-equal tallies avoid repeating the slot a doctor held the previous week.
 </p>
 
@@ -42,8 +40,8 @@
 			<thead>
 				<tr>
 					<th scope="col">GP</th>
-					<th scope="col" class="text-right">{locationShort('east_calder')} sessions worked</th>
-					<th scope="col" class="text-right">{locationShort('east_calder')} duty + duty team</th>
+					<th scope="col" class="text-right">Sessions worked</th>
+					<th scope="col" class="text-right">Duty + duty team</th>
 					<th scope="col" class="text-right">Duty tally</th>
 					<th scope="col">Excluded from duty</th>
 				</tr>
@@ -72,8 +70,8 @@
 		counts the week on screen, including unsaved edits.
 		<span class="mt-1 block">
 			<span class="mr-1 inline-block border-2 border-ink bg-sky px-2 py-0.5 font-bold">Blue rows</span>
-			work {branchPractice()} sessions only (per their standard availability), so they sit
-			outside the {mainPractice()} balancing — their duty can only be the {branchPractice()} slot.
+			work {branchPractice()} sessions only (per their standard availability), so their duty can
+			only be the {branchPractice()} slot — their tally isn't competing with {mainPractice()} GPs.
 		</span>
 	</p>
 </section>

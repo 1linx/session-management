@@ -77,8 +77,8 @@ export type Change = {
 
 /**
  * Historical worked/duty session totals per userId (rolling window), used
- * to seed the Duty Tally: duty ÷ worked. EAST CALDER sessions only, on
- * both sides — Ratho duty/work is excluded from the balancing. Users
+ * to seed the Duty Tally: duty ÷ worked. Sessions at both practices
+ * count, on both sides — Ratho duty earns credit like EC duty. Users
  * absent from the map count as 0/0 — a brand-new doctor has the lowest
  * tally and gets duty first.
  */

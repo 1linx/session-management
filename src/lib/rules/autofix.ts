@@ -37,9 +37,10 @@
  *      visits counts as exactly 0.5 of a GP (requirements may be halves).
  *
  * Duty fairness — the running Duty Tally (DT): duty sessions ÷ sessions
- * worked, counting EAST CALDER sessions only (Ratho duty falls to whoever
- * is on site, so it would skew the balance; duty-team sessions count the
- * same as duty — both are the extra commitment being balanced), seeded
+ * worked, counting sessions at BOTH practices (Ratho duty is real duty
+ * and earns credit; Ratho sessions count as worked too, so the ratio
+ * stays fair; duty-team sessions count the same as duty — both are the
+ * extra commitment being balanced), seeded
  * from up to a year of saved history (see
  * $lib/server/duty-history.ts) plus this week's grid, updating live as
  * fixes are applied. A doctor already on duty in the other half of the
@@ -84,13 +85,14 @@ function cellOf(ctx: Ctx, userId: string, slot: string): CellValue {
 }
 
 /**
- * The Duty Tally counts EAST CALDER sessions only — Ratho duty falls to
- * whoever is on site, so it would skew the balancing. Duty team is the
- * same extra commitment as duty, so both accrue tally credit.
+ * The Duty Tally counts sessions at both practices: Ratho duty earns
+ * credit like East Calder duty, and Ratho sessions count as worked so the
+ * ratio stays proportionate. Duty team is the same extra commitment as
+ * duty, so both accrue tally credit.
  */
-const ecWorking = (cell: CellValue) => cell.status === 'working' && cell.location === 'east_calder';
-const ecDutyCredit = (cell: CellValue) =>
-	ecWorking(cell) && (cell.role === 'duty' || cell.role === 'duty_team');
+const tallyWorking = (cell: CellValue) => cell.status === 'working';
+const tallyDutyCredit = (cell: CellValue) =>
+	tallyWorking(cell) && (cell.role === 'duty' || cell.role === 'duty_team');
 
 function setCell(ctx: Ctx, member: StaffMember, slot: string, to: CellValue, reason: string) {
 	const from = cellOf(ctx, member.id, slot);
@@ -98,8 +100,8 @@ function setCell(ctx: Ctx, member: StaffMember, slot: string, to: CellValue, rea
 	ctx.changes.push({ userId: member.id, initials: member.initials, slot, from, to, reason });
 	const bump = (map: Map<string, number>, by: number) =>
 		map.set(member.id, (map.get(member.id) ?? 0) + by);
-	if (ecWorking(from) !== ecWorking(to)) bump(ctx.workCount, ecWorking(to) ? 1 : -1);
-	if (ecDutyCredit(from) !== ecDutyCredit(to)) bump(ctx.dutyCount, ecDutyCredit(to) ? 1 : -1);
+	if (tallyWorking(from) !== tallyWorking(to)) bump(ctx.workCount, tallyWorking(to) ? 1 : -1);
+	if (tallyDutyCredit(from) !== tallyDutyCredit(to)) bump(ctx.dutyCount, tallyDutyCredit(to) ? 1 : -1);
 }
 
 function workingAt(ctx: Ctx, slot: string, practice: LocationValue) {
@@ -417,9 +419,9 @@ export function autoFixWeek(
 		let dutyHeld = past?.duty ?? 0;
 		for (const slot of ALL_SLOTS) {
 			const cell = copy[member.id]?.[slot];
-			if (cell && ecWorking(cell)) {
+			if (cell && tallyWorking(cell)) {
 				worked += 1;
-				if (ecDutyCredit(cell)) dutyHeld += 1;
+				if (tallyDutyCredit(cell)) dutyHeld += 1;
 			}
 		}
 		ctx.workCount.set(member.id, worked);

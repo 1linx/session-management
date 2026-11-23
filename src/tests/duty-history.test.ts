@@ -49,14 +49,14 @@ describe('duty history', () => {
 		expect(tallies[a.id]).toEqual({ worked: 4, duty: 2 });
 	});
 
-	it('counts East Calder sessions only — Ratho work and duty are excluded', async () => {
+	it('counts sessions at both practices — Ratho work and duty included', async () => {
 		const a = await createUser();
 		await createEntry(a.id, 1, 'AM', { weekStart: lastWeek, role: 'duty' }); // EC — counts
 		await createEntry(a.id, 2, 'AM', { weekStart: lastWeek, location: 'ratho', role: 'duty' });
 		await createEntry(a.id, 2, 'PM', { weekStart: lastWeek, location: 'ratho' });
 
 		const tallies = await getDutyTallies();
-		expect(tallies[a.id]).toEqual({ worked: 1, duty: 1 });
+		expect(tallies[a.id]).toEqual({ worked: 3, duty: 2 });
 	});
 
 	it('excludes the viewed week (the live grid supplies it)', async () => {
@@ -110,11 +110,11 @@ describe('duty page load', () => {
 		const data = (await dutyPageLoad({} as LoadEvent)) as DutyPageData;
 
 		expect(data.windowDays).toBe(365);
-		// The Ratho duty session is excluded from the tally (EC-only) but
-		// still appears in the duty log below.
+		// The Ratho duty session counts towards the tally and also appears
+		// in the duty log below.
 		const row = data.tally.find((t: { id: string }) => t.id === gp.id);
-		expect(row).toMatchObject({ worked: 2, duty: 1, rathoOnly: false });
-		expect(row?.tally).toBeCloseTo(1 / 2);
+		expect(row).toMatchObject({ worked: 3, duty: 2, rathoOnly: false });
+		expect(row?.tally).toBeCloseTo(2 / 3);
 		// ANPs are not in the tally — duty is a GP concern.
 		expect(data.tally.some((t: { id: string }) => t.id === anp.id)).toBe(false);
 		// Standard availability entirely at Ratho is marked.

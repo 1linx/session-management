@@ -3,12 +3,11 @@
  *
  * DT = total duty sessions (TDS) ÷ total historical sessions worked (THS),
  * per doctor, over a rolling window. A duty-team session counts the same
- * as a duty session — both are the extra commitment being balanced. Only
- * EAST CALDER sessions count, on both sides of the ratio: Ratho duty falls
- * to whoever is on site (often a Ratho-only doctor), so including it would
- * skew the balancing, which is really about East Calder. Auto-fix
- * prioritises low-DT doctors when assigning duty, so EC duty spreads
- * proportionately to how much each person works at EC.
+ * as a duty session — both are the extra commitment being balanced.
+ * Sessions at BOTH practices count, on both sides of the ratio: Ratho duty
+ * earns credit like East Calder duty, and Ratho sessions count as worked.
+ * Auto-fix prioritises low-DT doctors when assigning duty, so duty spreads
+ * proportionately to how much each person works.
  *
  * The window defaults to 365 days and can be shrunk for testing via the
  * DUTY_HISTORY_DAYS env var. It is enforced at query time — nothing is
@@ -52,7 +51,6 @@ export async function getDutyTallies(excludeWeek?: string): Promise<DutyHistory>
 		.where(
 			and(
 				eq(scheduleEntries.status, 'working'),
-				eq(scheduleEntries.location, 'east_calder'),
 				gte(scheduleEntries.weekStart, dutyHistoryCutoff()),
 				...(excludeWeek ? [ne(scheduleEntries.weekStart, excludeWeek)] : [])
 			)

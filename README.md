@@ -174,11 +174,10 @@ Duty is an extra commitment, so Auto-fix spreads it using a running
 **Duty Tally**: duty sessions ÷ sessions worked (a duty-team session
 counts the same as duty), per GP, over a rolling
 window of saved rota history (365 days by default; set `DUTY_HISTORY_DAYS`
-in `.env` to shrink it for testing). Only **East Calder** sessions count,
-on both sides of the ratio — Ratho duty falls to whoever is on site, often
-a Ratho-only doctor, so it would skew the balance. The lowest tally gets
-duty first, so a GP working 8 EC sessions is expected to carry twice the
-duty of one working 4. A doctor already on duty in the other half of the
+in `.env` to shrink it for testing). Sessions at **both practices** count,
+on both sides of the ratio — Ratho duty earns credit like East Calder duty,
+and Ratho sessions count as worked. The lowest tally gets duty first, so a
+GP working 8 sessions is expected to carry twice the duty of one working 4. A doctor already on duty in the other half of the
 same day is passed over whenever another candidate exists — no AM+PM duty
 on one day unless unavoidable.
 Tallies within 0.02 count as level, and between level candidates Auto-fix

@@ -190,6 +190,22 @@ describe('autoFixWeek', () => {
 		expect(fixed['a']['1:PM'].role).toBeNull();
 	});
 
+	it('Ratho duty this week counts towards the tally', () => {
+		// a already held Ratho duty on Monday, so with otherwise equal
+		// standing b is further behind and takes Tuesday's EC duty.
+		const staff = [gp('a'), gp('b')];
+		const { grid: fixed } = autoFixWeek(
+			staff,
+			grid({
+				a: { '1:AM': 'working:ratho:duty', '2:AM': 'working:east_calder' },
+				b: { '2:AM': 'working:east_calder' }
+			}),
+			settings()
+		);
+		expect(fixed['b']['2:AM'].role).toBe('duty');
+		expect(fixed['a']['2:AM'].role).toBeNull();
+	});
+
 	it('avoids giving the same doctor AM and PM duty on one day, even against the tally', () => {
 		// a is well behind on the tally so takes Monday AM; Monday PM then
 		// goes to b rather than doubling a up on the same day.
