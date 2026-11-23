@@ -35,15 +35,24 @@
 
 <section aria-label="Duty tally" class="mb-8">
 	<h2 class="mb-2 text-xl font-black uppercase">Running tally</h2>
-	<div class="nb-scroll max-w-3xl">
+	<div class="nb-scroll max-w-5xl">
 		<table class="nb-table">
 			<thead>
 				<tr>
-					<th scope="col">GP</th>
-					<th scope="col" class="text-right">Sessions worked</th>
-					<th scope="col" class="text-right">Duty + duty team</th>
-					<th scope="col" class="text-right">Duty tally</th>
-					<th scope="col">Excluded from duty</th>
+					<th scope="col" rowspan="2">GP</th>
+					<th scope="colgroup" colspan="2" class="text-center">{mainPractice()}</th>
+					<th scope="colgroup" colspan="2" class="text-center">{branchPractice()}</th>
+					<th scope="colgroup" colspan="3" class="text-center">Total</th>
+					<th scope="col" rowspan="2">Excluded from duty</th>
+				</tr>
+				<tr>
+					<th scope="col" class="text-right">Sessions</th>
+					<th scope="col" class="text-right">Duty + team</th>
+					<th scope="col" class="text-right">Sessions</th>
+					<th scope="col" class="text-right">Duty</th>
+					<th scope="col" class="text-right">Sessions</th>
+					<th scope="col" class="text-right">Duty</th>
+					<th scope="col" class="text-right">Tally</th>
 				</tr>
 			</thead>
 			<tbody>
@@ -56,6 +65,10 @@
 								<span class="sr-only">(works {branchPractice()} sessions only)</span>
 							{/if}
 						</th>
+						<td class="text-right tabular-nums">{doc.mainWorked}</td>
+						<td class="text-right tabular-nums">{doc.mainDuty}</td>
+						<td class="text-right tabular-nums">{doc.branchWorked}</td>
+						<td class="text-right tabular-nums">{doc.branchDuty}</td>
 						<td class="text-right tabular-nums">{doc.worked}</td>
 						<td class="text-right tabular-nums">{doc.duty}</td>
 						<td class="text-right font-bold tabular-nums">{percent(doc.tally)}</td>

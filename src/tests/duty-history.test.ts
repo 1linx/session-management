@@ -113,7 +113,15 @@ describe('duty page load', () => {
 		// The Ratho duty session counts towards the tally and also appears
 		// in the duty log below.
 		const row = data.tally.find((t: { id: string }) => t.id === gp.id);
-		expect(row).toMatchObject({ worked: 3, duty: 2, rathoOnly: false });
+		expect(row).toMatchObject({
+			mainWorked: 2,
+			mainDuty: 1,
+			branchWorked: 1,
+			branchDuty: 1,
+			worked: 3,
+			duty: 2,
+			rathoOnly: false
+		});
 		expect(row?.tally).toBeCloseTo(2 / 3);
 		// ANPs are not in the tally — duty is a GP concern.
 		expect(data.tally.some((t: { id: string }) => t.id === anp.id)).toBe(false);
